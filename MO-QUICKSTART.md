@@ -22,7 +22,7 @@ java -jar smojol-cli/target/smojol-cli.jar run CBACT01C.cbl --commands="WRITE_FL
 
 Card demo analysis for all source
 ```java
-java -jar smojol-cli/target/smojol-cli.jar run $(ls $CARD_DEMO_LOCATION/app/cbl/*.cbl | xargs basename) --commands="WRITE_FLOW_AST INJECT_INTO_NEO4J EXPORT_TO_GRAPHML WRITE_RAW_AST DRAW_FLOWCHART WRITE_CFG" --srcDir $CARD_DEMO_LOCATION/app/cbl --copyBooksDir workspace/aws-mainframe-modernization-carddemo/app/cpy --dialectJarPath ./che-che4z-lsp-for-cobol-integration/server/dialect-idms/target/dialect-idms.jar --reportDir out/report --generation=PROGRAM
+java -jar smojol-cli/target/smojol-cli.jar run $(ls $CARD_DEMO_LOCATION/app/cbl/*.cbl | xargs basename) --commands="WRITE_FLOW_AST INJECT_INTO_NEO4J EXPORT_TO_GRAPHML WRITE_RAW_AST DRAW_FLOWCHART WRITE_CFG" --srcDir $CARD_DEMO_LOCATION/app/cbl --copyBooksDir $CARD_DEMO_LOCATION/app/cpy --dialectJarPath ./che-che4z-lsp-for-cobol-integration/server/dialect-idms/target/dialect-idms.jar --reportDir out/report --generation=PROGRAM
 ```
 
 ## Helpful Commands
