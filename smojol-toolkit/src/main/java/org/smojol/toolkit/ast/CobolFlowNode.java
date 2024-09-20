@@ -8,24 +8,27 @@ import org.antlr.v4.runtime.tree.TerminalNodeImpl;
 import org.eclipse.lsp.cobol.dialects.idms.IdmsParser;
 import org.eclipse.lsp.cobol.core.CobolParser;
 import org.smojol.common.ast.*;
+import org.smojol.common.pseudocode.CodeSentinelType;
+import org.smojol.common.pseudocode.SmojolSymbolTable;
 import org.smojol.common.vm.interpreter.CobolInterpreter;
 import org.smojol.common.vm.interpreter.CobolVmSignal;
 import org.smojol.common.vm.interpreter.FlowControl;
 import org.smojol.common.vm.stack.StackFrames;
+import org.smojol.common.vm.structure.CobolDataStructure;
 
 import java.util.*;
+import java.util.logging.Logger;
 
 public class CobolFlowNode implements FlowNode {
+    private static final Logger LOGGER = Logger.getLogger(CobolFlowNode.class.getName());
     protected final String uuid;
     protected List<FlowNode> outgoingNodes = new ArrayList<>();
     protected List<FlowNode> incomingNodes = new ArrayList<>();
-    @Getter
-    protected final ParseTree executionContext;
+    @Getter protected final ParseTree executionContext;
     protected FlowNodeService nodeService;
-    private DomainDocument document = new DomainDocument();
     private boolean databaseAccess;
     protected FlowNode scope;
-    protected final StackFrames staticFrameContext;
+    @Getter protected final StackFrames staticFrameContext;
     private List<CommentBlock> commentBlocks = new ArrayList<>();
 
     public CobolFlowNode(ParseTree executionContext, FlowNode scope, FlowNodeService nodeService, StackFrames stackFrames) {
@@ -38,7 +41,7 @@ public class CobolFlowNode implements FlowNode {
 
     @Override
     public void buildFlow() {
-        System.out.println("Building flow for " + name());
+        LOGGER.fine("Building flow for " + name());
         buildInternalFlow();
         buildOutgoingFlow();
     }
@@ -119,8 +122,13 @@ public class CobolFlowNode implements FlowNode {
     }
 
     @Override
-    public List<FlowNodeCategory> categories() {
-        return ImmutableList.of(FlowNodeCategory.GENERIC_CODE);
+    public List<SemanticCategory> categories() {
+        return ImmutableList.of(SemanticCategory.GENERIC_CODE);
+    }
+
+    @Override
+    public CodeSentinelType codeSentinelType() {
+        return CodeSentinelType.BODY;
     }
 
     protected String defaultName() {
@@ -151,6 +159,10 @@ public class CobolFlowNode implements FlowNode {
         outgoingNodes.forEach(c -> c.accept(visitor, level));
     }
 
+    @Override
+    public void resolve(SmojolSymbolTable symbolTable, CobolDataStructure dataStructures) {
+    }
+
     public void acceptUnvisited(FlowNodeVisitor visitor, FlowNodeCondition stopCondition, int level) {
         acceptUnvisited(visitor, level);
     }
@@ -158,11 +170,6 @@ public class CobolFlowNode implements FlowNode {
     @Override
     public void addIncomingNode(FlowNode flowNode) {
         incomingNodes.add(flowNode);
-    }
-
-    @Override
-    public DomainDocument getNotes() {
-        return document;
     }
 
     @Override
@@ -220,6 +227,15 @@ public class CobolFlowNode implements FlowNode {
         return commentBlocks;
     }
 
+    @Override
+    public void addChild(FlowNode child) {
+    }
+
+    @Override
+    public void buildTwin() {
+        buildInternalFlow();
+    }
+
     // Specifically to return if this node terminated further execution
     // Overrides of this might choose to continue based on specific signal
     // TODO: This should move to some sort of a state machine implementation
@@ -233,7 +249,7 @@ public class CobolFlowNode implements FlowNode {
 
     protected CobolVmSignal next(CobolVmSignal signal, CobolInterpreter interpreter, FlowNodeService nodeService) {
         if (outgoingNodes.size() > 1) {
-            System.out.println("WARNING: ROGUE NODE " + this.label());
+            LOGGER.warning("ROGUE NODE " + this.label());
         }
         if (outgoingNodes.isEmpty()) return signal;
         return outgoingNodes.getFirst().acceptInterpreter(interpreter, FlowControl::CONTINUE);
@@ -248,7 +264,7 @@ public class CobolFlowNode implements FlowNode {
     @Override
     public FlowNode next(FlowNodeCondition nodeCondition, FlowNode startingNode, boolean isComplete) {
         if (this != startingNode && nodeCondition.apply(this)) return this;
-        System.out.println("Num outgoing nodes: " + outgoingNodes.size());
+        LOGGER.finer("Num outgoing nodes: " + outgoingNodes.size());
         if (outgoingNodes.isEmpty()) return scope.next(nodeCondition, startingNode, true);
         for (FlowNode o : outgoingNodes) {
             FlowNode next = o.next(nodeCondition, startingNode, true);

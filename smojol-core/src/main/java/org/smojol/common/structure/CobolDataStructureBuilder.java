@@ -13,8 +13,10 @@ import org.smojol.common.vm.type.TypedRecord;
 import java.util.List;
 import java.util.Optional;
 import java.util.function.Function;
+import java.util.logging.Logger;
 
-public class CobolDataStructureBuilder implements DataStructureBuilder {
+public class CobolDataStructureBuilder {
+    private static final Logger LOGGER = Logger.getLogger(CobolDataStructureBuilder.class.getName());
     private final CobolEntityNavigator navigator;
     private final UnresolvedReferenceStrategy unresolvedReferenceStrategy;
     private CobolDataStructure zerothStructure;
@@ -28,7 +30,6 @@ public class CobolDataStructureBuilder implements DataStructureBuilder {
         this.idProvider = idProvider;
     }
 
-    @Override
     public CobolDataStructure build() {
         zerothStructure = new Format1DataStructure(0, unresolvedReferenceStrategy);
         ParseTree dataDivision = navigator.dataDivisionBodyRoot();
@@ -39,8 +40,9 @@ public class CobolDataStructureBuilder implements DataStructureBuilder {
         zerothStructure.expandTables();
         zerothStructure.calculateMemoryRequirements();
         zerothStructure.allocateRecordPointers();
+        int i = 0;
         while (zerothStructure.buildRedefinitions(zerothStructure)) {
-            System.out.println("Building redefinitions...");
+            LOGGER.info("Building redefinitions...");
         }
         addGlobalSystemStructures();
         addUnreferencedStructures();
@@ -107,7 +109,7 @@ public class CobolDataStructureBuilder implements DataStructureBuilder {
                 int entryLevel = Integer.parseInt(format1.levelNumber().LEVEL_NUMBER().getSymbol().getText());
                 if (currentLevel == 0) {
                     if (entryLevel != 1) {
-                        System.out.println("WARNING: Top level variable is not level 01");
+                        LOGGER.warning("Top level variable is not level 01");
                         // TODO: Should we be strict or lax regarding top level variables not being level 01???
 //                        throw new RuntimeException("Top Level entry must be 01");
                     }
@@ -122,7 +124,7 @@ public class CobolDataStructureBuilder implements DataStructureBuilder {
                     continue;
                 } else if (entryLevel == 66) {
                     // TODO: Support RENAME's at some point
-                    System.out.println("Level 66 RENAMEs are not supported yet, skipping...");
+                    LOGGER.warning("Level 66 RENAMEs are not supported yet, skipping...");
                     continue;
                 } else {
                     // This is for adding a structure at a lower level than the current level's parent.
@@ -139,4 +141,6 @@ public class CobolDataStructureBuilder implements DataStructureBuilder {
     private CobolDataStructure format1(CobolParser.DataDescriptionEntryFormat1Context format1Context, UnresolvedReferenceStrategy unresolvedReferenceStrategy, SourceSection sourceSection) {
         return format1DataStructureBuilder.build(format1Context, unresolvedReferenceStrategy, sourceSection);
     }
+
+
 }

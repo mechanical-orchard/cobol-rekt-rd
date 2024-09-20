@@ -6,10 +6,8 @@ import org.apache.commons.lang3.tuple.ImmutablePair;
 import org.apache.commons.lang3.tuple.Pair;
 import org.eclipse.lsp.cobol.core.CobolDataTypes;
 import org.eclipse.lsp.cobol.core.CobolDataTypesLexer;
-import org.eclipse.lsp.cobol.core.CobolParser;
-import org.smojol.common.vm.type.SignType;
+import org.smojol.common.vm.type.ZonedDecimalSignType;
 import org.smojol.common.vm.type.AlphanumericDataTypeSpec;
-import org.smojol.common.vm.type.CobolDataType;
 import org.smojol.common.vm.type.DataTypeSpec;
 import org.smojol.common.vm.type.ZonedDecimalDataTypeSpec;
 
@@ -33,7 +31,7 @@ public class DataLayoutBuilder {
 
     private ImmutablePair<DataTypeSpec, Integer> numeric(CobolDataTypes.DataTypeSpecContext spec) {
         CobolDataTypes.FractionContext fractionCtx = spec.fraction();
-        SignType signType = fractionCtx.SIGN_SYMBOL() != null ? SignType.SIGNED : SignType.UNSIGNED;
+        ZonedDecimalSignType signType = fractionCtx.SIGN_SYMBOL() != null ? ZonedDecimalSignType.SIGNED : ZonedDecimalSignType.UNSIGNED;
         Pair<Integer, Integer> leftRight = numChars(fractionCtx);
         ZonedDecimalDataTypeSpec numericType = new ZonedDecimalDataTypeSpec(leftRight.getLeft(), leftRight.getRight(), signType);
         int totalChars = leftRight.getRight() + leftRight.getLeft();
@@ -73,6 +71,7 @@ public class DataLayoutBuilder {
             return new ImmutablePair<>(leftSide, rightSide);
         }
     }
+
     private Integer numChars(List<CobolDataTypes.DigitIndicatorContext> indicators) {
         return indicators.stream().map(this::numChars).reduce(0, Integer::sum);
     }
@@ -95,7 +94,7 @@ public class DataLayoutBuilder {
         return alphanumericIndicator.charTypeIndicator() != null ? 1 : Integer.parseInt(alphanumericIndicator.nchars().numberOf().getText().replace("(", "").replace(")", ""));
     }
 
-    private static CobolDataTypes.StartRuleContext parseSpec(String spec) {
+    public static CobolDataTypes.StartRuleContext parseSpec(String spec) {
         CobolDataTypesLexer antlrLexer = new CobolDataTypesLexer(CharStreams.fromString(spec));
         antlrLexer.removeErrorListeners();
         CommonTokenStream tokenStream = new CommonTokenStream(antlrLexer);
@@ -108,12 +107,5 @@ public class DataLayoutBuilder {
         CobolDataTypes.StartRuleContext root = parseSpec(spec);
         Pair<DataTypeSpec, Integer> typeSpec = typeSpec(root.dataTypeSpec());
         return typeSpec;
-    }
-
-    public CobolDataType type(CobolParser.DataDescriptionEntryFormat1Context dataDescription) {
-        if (dataDescription.dataPictureClause().isEmpty()) return CobolDataType.GROUP;
-        String input = dataDescription.dataPictureClause().getFirst().pictureString().getFirst().getText();
-        CobolDataTypes.StartRuleContext root = parseSpec(input);
-        return root.dataTypeSpec().fraction() != null ? CobolDataType.NUMBER : CobolDataType.STRING;
     }
 }

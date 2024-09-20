@@ -19,7 +19,7 @@ import org.smojol.common.ast.FlowNode;
 import org.smojol.common.ast.SerialisableEdge;
 import org.smojol.common.ast.SerialisableCFGFlowNode;
 import org.smojol.common.vm.structure.CobolDataStructure;
-import org.smojol.toolkit.interpreter.navigation.FlowNodeASTTraversal;
+import org.smojol.common.ast.FlowNodeASTTraversal;
 
 import java.io.File;
 import java.util.*;
@@ -35,8 +35,7 @@ public class JGraphTGraphBuilder {
     private final Graph<TypedGraphVertex, TypedGraphEdge> astGraph;
     private final Graph<TypedGraphVertex, TypedGraphEdge> cfgGraph;
     private final Graph<TypedGraphVertex, TypedGraphEdge> dataStructuresGraph;
-    @Getter
-    private final Graph<TypedGraphVertex, TypedGraphEdge> model;
+    @Getter private final Graph<TypedGraphVertex, TypedGraphEdge> model;
     private final JGraphTCodeOperations astGraphOperations;
     private final JGraphTDataOperations dataGraphOperations;
 
@@ -128,6 +127,5 @@ public class JGraphTGraphBuilder {
         cliqueFinder.forEach(cliques::add);
         KSpanningTreeClustering<TypedGraphVertex, TypedGraphEdge> clusterer = new KSpanningTreeClustering<>(undirected, 50);
         ClusteringAlgorithm.Clustering<TypedGraphVertex> clustering = clusterer.getClustering();
-        System.out.println("BOOM");
     }
 }

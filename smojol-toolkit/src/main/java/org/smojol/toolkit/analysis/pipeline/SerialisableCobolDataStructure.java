@@ -25,7 +25,7 @@ public class SerialisableCobolDataStructure {
 
     public SerialisableCobolDataStructure(CobolDataStructure data) {
         name = data.name();
-        dataType = data.getDataType().name();
+        dataType = data.getDataType().abstractType().name();
         content = data.content();
         id = data.getId();
         levelNumber = data.getLevelNumber();
@@ -42,5 +42,9 @@ public class SerialisableCobolDataStructure {
 
     public void add(SerialisableCobolDataStructure child) {
         children.add(child);
+    }
+
+    public SerialisableCobolDataStructure getChild(int i) {
+        return children.get(i);
     }
 }

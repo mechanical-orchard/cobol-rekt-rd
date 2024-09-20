@@ -3,7 +3,7 @@ package org.smojol.common.vm.expression;
 import org.eclipse.lsp.cobol.core.CobolParser;
 import org.smojol.common.vm.structure.CobolDataStructure;
 
-public class ConditionVisitor extends CobolExpressionVisitor {
+public class ConditionVisitor extends AntlrCobolExpressionVisitor {
     private final CobolDataStructure dataRoot;
 
     public ConditionVisitor(CobolDataStructure dataRoot) {
@@ -38,7 +38,7 @@ public class ConditionVisitor extends CobolExpressionVisitor {
             LogicOperation operator = additionalConditionVisitor.operator();
             modifiedExpression = graft(operator, modifiedExpression, additionalExpression);
         }
-        expression = new NestedCondition(modifiedExpression);
+        expression = new NestedConditionExpression(modifiedExpression);
         if (ctx.NOT() != null) expression = new NotExpression(expression);
         return expression;
     }

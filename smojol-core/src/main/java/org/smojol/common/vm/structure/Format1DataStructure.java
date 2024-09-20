@@ -12,20 +12,20 @@ import org.smojol.common.vm.memory.*;
 import org.smojol.common.vm.reference.CobolReference;
 import org.smojol.common.vm.reference.PrimitiveReference;
 import org.smojol.common.vm.strategy.UnresolvedReferenceStrategy;
-import org.smojol.common.vm.type.CobolDataType;
-import org.smojol.common.vm.type.DataTypeSpec;
-import org.smojol.common.vm.type.GroupDataTypeSpec;
-import org.smojol.common.vm.type.TypedRecord;
+import org.smojol.common.vm.type.*;
 
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
 import java.util.function.Function;
+import java.util.logging.Logger;
 
 public class Format1DataStructure extends CobolDataStructure {
+    private static final Logger LOGGER = Logger.getLogger(Format1DataStructure.class.getName());
     protected final UnresolvedReferenceStrategy unresolvedReferenceStrategy;
     private final Function<CobolParser.DataDescriptionEntryFormat1Context, String> namingScheme;
-    @Getter protected CobolParser.DataDescriptionEntryFormat1Context dataDescription;
+    @Getter
+    protected final CobolParser.DataDescriptionEntryFormat1Context dataDescription;
     protected final List<ConditionalDataStructure> conditions = new ArrayList<>();
     protected MemoryLayout layout;
     protected Pair<DataTypeSpec, Integer> typeSpec;
@@ -57,20 +57,10 @@ public class Format1DataStructure extends CobolDataStructure {
     }
 
     public Format1DataStructure(CobolParser.DataDescriptionEntryFormat1Context dataDescription, UnresolvedReferenceStrategy unresolvedReferenceStrategy, SourceSection sourceSection) {
-        this(dataDescription, unresolvedReferenceStrategy, cobolDataType(dataDescription), sourceSection);
-    }
-
-    @Override
-    public void accept(DataStructureVisitor visitor, CobolDataStructure parent, Function<CobolDataStructure, Boolean> stopRecurseCondition, CobolDataStructure root) {
-        super.accept(visitor, parent, stopRecurseCondition, root);
-        this.conditions.forEach(c -> c.accept(visitor, this, stopRecurseCondition, root));
-    }
-
-    public Format1DataStructure(CobolParser.DataDescriptionEntryFormat1Context dataDescription, UnresolvedReferenceStrategy unresolvedReferenceStrategy, CobolDataType dataType, SourceSection sourceSection) {
-        super(NamingScheme.IDENTITY.apply(dataDescription), Integer.parseInt(dataDescription.levelNumber().getText()), dataType, NodeText.originalText(dataDescription), sourceSection);
+        super(NamingScheme.IDENTITY.apply(dataDescription), Integer.parseInt(dataDescription.levelNumber().getText()), cobolDataType(dataDescription), NodeText.originalText(dataDescription), sourceSection);
         this.namingScheme = NamingScheme.IDENTITY;
         this.dataDescription = dataDescription;
-        System.out.println("Setting value for " + dataDescription.getText());
+        LOGGER.finer("Setting value for " + dataDescription.getText());
         this.unresolvedReferenceStrategy = unresolvedReferenceStrategy;
     }
 
@@ -79,23 +69,37 @@ public class Format1DataStructure extends CobolDataStructure {
         super(NamingScheme.ROOT.apply(null), levelNumber, CobolDataType.ROOT, "[ROOT]", SourceSection.ROOT);
         this.namingScheme = NamingScheme.ROOT;
         this.layout = new NullMemoryLayout();
+        this.dataDescription = null;
         this.unresolvedReferenceStrategy = unresolvedReferenceStrategy;
     }
 
     // Copy constructor
-    public Format1DataStructure(Function<CobolParser.DataDescriptionEntryFormat1Context, String> namingScheme, CobolParser.DataDescriptionEntryFormat1Context dataDescription, List<CobolDataStructure> childStructures, int level, CobolDataStructure parent, boolean isComposite, UnresolvedReferenceStrategy unresolvedReferenceStrategy, List<ConditionalDataStructure> conditions, CobolDataType dataType, SourceSection sourceSection) {
-        super(namingScheme.apply(dataDescription), childStructures, level, parent, isComposite, dataType, NodeText.originalText(dataDescription), sourceSection);
+//    public Format1DataStructure(Function<CobolParser.DataDescriptionEntryFormat1Context, String> namingScheme, CobolParser.DataDescriptionEntryFormat1Context dataDescription, List<CobolDataStructure> childStructures, int level, CobolDataStructure parent, boolean isComposite, UnresolvedReferenceStrategy unresolvedReferenceStrategy, List<ConditionalDataStructure> conditions, CobolDataType dataType, SourceSection sourceSection) {
+//        super(namingScheme.apply(dataDescription), childStructures, level, parent, isComposite, dataType, NodeText.originalText(dataDescription), sourceSection);
+//        this.namingScheme = namingScheme;
+//        this.dataDescription = dataDescription;
+//        this.unresolvedReferenceStrategy = unresolvedReferenceStrategy;
+//        this.conditions.addAll(conditions);
+//    }
+
+    // Copy constructor
+    public Format1DataStructure(Format1DataStructure that, Function<CobolParser.DataDescriptionEntryFormat1Context, String> namingScheme) {
+        this(that, that.copy(that.structures), namingScheme);
+    }
+
+    // Copy constructor
+    public Format1DataStructure(Format1DataStructure that, List<CobolDataStructure> childStructures, Function<CobolParser.DataDescriptionEntryFormat1Context, String> namingScheme) {
+        super(namingScheme.apply(that.dataDescription), childStructures, that.levelNumber, that.parent, that.isComposite, that.dataType, NodeText.originalText(that.dataDescription), that.sourceSection);
+        this.dataDescription = that.dataDescription;
+        this.unresolvedReferenceStrategy = that.unresolvedReferenceStrategy;
+        this.conditions.addAll(that.conditions);
         this.namingScheme = namingScheme;
-        this.dataDescription = dataDescription;
-        this.unresolvedReferenceStrategy = unresolvedReferenceStrategy;
-        this.conditions.addAll(conditions);
     }
 
     @Override
     public CobolDataStructure copy(Function<CobolParser.DataDescriptionEntryFormat1Context, String> namingScheme) {
-//        if (!isComposite)
-//            return new Format1DataStructure(dataDescription, unresolvedReferenceStrategy);
-        return new Format1DataStructure(namingScheme, dataDescription, copy(structures), level(), parent, isComposite, unresolvedReferenceStrategy, conditions, dataType, sourceSection);
+//        return new Format1DataStructure(namingScheme, dataDescription, copy(structures), level(), parent, isComposite, unresolvedReferenceStrategy, conditions, dataType, sourceSection);
+        return new Format1DataStructure(this, namingScheme);
     }
 
     protected List<CobolDataStructure> copy(List<CobolDataStructure> structures) {
@@ -103,22 +107,8 @@ public class Format1DataStructure extends CobolDataStructure {
     }
 
     @Override
-    public void reset(String recordID) {
-        List<? extends CobolDataStructure> path = searchRecursively(recordID, this);
-        unresolvedReferenceStrategy.runIfResolved(path, recordID, () -> path.getLast().reset());
-    }
-
-    @Override
     public void set(CobolReference ref) {
         ConversionStrategy.set(this, ref);
-    }
-
-    @Override
-    public void set(String destinationRecordID, CobolReference ref) {
-        List<? extends CobolDataStructure> path = searchRecursively(destinationRecordID, this);
-        unresolvedReferenceStrategy.runIfResolved(path, destinationRecordID, () -> {
-            ConversionStrategy.set(path.getLast(), ref);
-        });
     }
 
     @Override
@@ -128,62 +118,23 @@ public class Format1DataStructure extends CobolDataStructure {
     }
 
     @Override
-    public void add(String recordID, CobolReference ref) {
-        List<? extends CobolDataStructure> path = searchRecursively(recordID, this);
-        unresolvedReferenceStrategy.runIfResolved(path, recordID, () -> {
-            CobolDataStructure record = path.getLast();
-            record.add(ref);
-        });
-    }
-
-    @Override
-    public void subtract(String recordID, CobolReference ref) {
-        List<? extends CobolDataStructure> path = searchRecursively(recordID, this);
-        unresolvedReferenceStrategy.runIfResolved(path, recordID, () -> {
-            CobolDataStructure record = path.getLast();
-            record.subtract(ref);
-//            record.set(new PrimitiveReference(record.getValue().subtract(ref.resolveAs(CobolDataType.NUMBER))));
-        });
-    }
-
-    @Override
-    public void multiply(String recordID, CobolReference ref) {
-        List<? extends CobolDataStructure> path = searchRecursively(recordID, this);
-        unresolvedReferenceStrategy.runIfResolved(path, recordID, () -> {
-            CobolDataStructure record = path.getLast();
-            record.multiply(ref);
-//            record.set(new PrimitiveReference(record.getValue().multiply(ref.resolveAs(CobolDataType.NUMBER))));
-        });
-    }
-
-    @Override
-    public void divide(String recordID, CobolReference ref) {
-        List<? extends CobolDataStructure> path = searchRecursively(recordID, this);
-        unresolvedReferenceStrategy.runIfResolved(path, recordID, () -> {
-            CobolDataStructure record = path.getLast();
-            record.divide(ref);
-//            record.set(new PrimitiveReference(record.getValue().divide(ref.resolveAs(CobolDataType.NUMBER))));
-        });
-    }
-
-    @Override
     public void add(CobolReference ref) {
-        this.set(new PrimitiveReference(this.getValue().add(ref.resolveAs(CobolDataType.NUMBER))));
+        this.set(new PrimitiveReference(this.getValue().add(ref.resolveAs(AbstractCobolType.NUMBER))));
     }
 
     @Override
     public void subtract(CobolReference ref) {
-        this.set(new PrimitiveReference(this.getValue().subtract(ref.resolveAs(CobolDataType.NUMBER))));
+        this.set(new PrimitiveReference(this.getValue().subtract(ref.resolveAs(AbstractCobolType.NUMBER))));
     }
 
     @Override
     public void multiply(CobolReference ref) {
-        this.set(new PrimitiveReference(this.getValue().multiply(ref.resolveAs(CobolDataType.NUMBER))));
+        this.set(new PrimitiveReference(this.getValue().multiply(ref.resolveAs(AbstractCobolType.NUMBER))));
     }
 
     @Override
     public void divide(CobolReference ref) {
-        this.set(new PrimitiveReference(this.getValue().divide(ref.resolveAs(CobolDataType.NUMBER))));
+        this.set(new PrimitiveReference(this.getValue().divide(ref.resolveAs(AbstractCobolType.NUMBER))));
     }
 
     public CobolDataStructure addConditionalVariable(ConditionalDataStructure conditionalDataStructure) {
@@ -236,16 +187,18 @@ public class Format1DataStructure extends CobolDataStructure {
 
     @Override
     public void calculateMemoryRequirements() {
-        calculateForSingle();
+        typeSpec = typeSpecForSingle();
     }
 
-    private void calculateForSingle() {
-        if (!isComposite) {
-            typeSpec = new DataLayoutBuilder().size(dataDescription.dataPictureClause().getFirst().pictureString().getFirst().getText());
-        } else {
+    private Pair<DataTypeSpec, Integer> typeSpecForSingle() {
+        if (dataType == CobolDataType.POINTER)
+            return ImmutablePair.of(new ZonedDecimalDataTypeSpec(8, 0), 8);
+        else if (!isComposite)
+            return new DataLayoutBuilder().size(dataDescription.dataPictureClause().getFirst().pictureString().getFirst().getText());
+        else {
             structures.forEach(CobolDataStructure::calculateMemoryRequirements);
             Integer groupSize = primaryDefinitions().stream().map(CobolDataStructure::size).reduce(0, Integer::sum);
-            typeSpec = new ImmutablePair<>(new GroupDataTypeSpec(groupSize), groupSize);
+            return ImmutablePair.of(new GroupDataTypeSpec(groupSize), groupSize);
         }
     }
 
@@ -265,6 +218,7 @@ public class Format1DataStructure extends CobolDataStructure {
 
     @Override
     public boolean buildRedefinitions(CobolDataStructure root) {
+        LOGGER.finer("Inspecting Redefinitions of " + root + "...");
         if (!isComposite && (!isRedefinition() || isInitialisedRedefinition())) return false;
         if (isComposite && (!isRedefinition() || isInitialisedRedefinition())) {
             return structures.stream().map(dataStructure -> dataStructure.buildRedefinitions(root)).reduce(false, (a, b) -> a || b);
@@ -272,16 +226,18 @@ public class Format1DataStructure extends CobolDataStructure {
 
         CobolDataStructure redefinedRecord = root.reference(dataDescription.dataRedefinesClause().getFirst().dataName().getText());
         if (redefinedRecord.layout() == null) {
-            System.out.println(String.format("WARNING: %s does not seem to have a layout defined. Have you declared this variable?", redefinedRecord.name()));
+            LOGGER.warning(String.format("%s does not seem to have a layout defined. Have you declared this variable?", redefinedRecord.name()));
             layout = new NullMemoryLayout();
             return false;
         }
         MemoryAccess originalAccess = redefinedRecord.layout().getAccess();
         if (isComposite) {
+            LOGGER.finer(String.format("Building [%s] redefinition of group record [%s]", name(), redefinedRecord.name()));
             int headPointer = originalAccess.fromIndex();
             allocateLayouts(headPointer, originalAccess.fullMemory());
             return true;
         }
+        LOGGER.finer(String.format("Building [%s] redefinition of atomic record [%s]", name(), redefinedRecord.name()));
         RangeMemoryAccess redefinedAccess = originalAccess.copy(typeSpec.getLeft().sizeInBytes());
         layout = new MemoryLayout(redefinedAccess, typeSpec.getLeft());
         return true;
@@ -317,6 +273,12 @@ public class Format1DataStructure extends CobolDataStructure {
 //        if (dataType == CobolDataType.ROOT) return "[ROOT]";
 //        return dataDescription != null ? dataDescription.entryName().getText() + " " + layout.toString() : "[ROOT]";
         return namingScheme.apply(dataDescription) + " " + layout.toString();
+    }
+
+    @Override
+    public void accept(DataStructureVisitor visitor, CobolDataStructure parent, Function<CobolDataStructure, Boolean> stopRecurseCondition, CobolDataStructure root) {
+        super.accept(visitor, parent, stopRecurseCondition, root);
+        this.conditions.forEach(c -> c.accept(visitor, this, stopRecurseCondition, root));
     }
 
     private Optional<ConditionalDataStructure> condition(String subRecordID) {

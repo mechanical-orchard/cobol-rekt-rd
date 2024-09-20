@@ -12,8 +12,10 @@ import org.smojol.common.vm.interpreter.ExecutionListener;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
+import java.util.logging.Logger;
 
 public class RunFlowchartTracer implements ExecutionListener, GraphWriter {
+    private static final Logger LOGGER = Logger.getLogger(RunFlowchartTracer.class.getName());
     private Set<FlowNode> nodes = new HashSet<>();
 
     @Override
@@ -36,10 +38,10 @@ public class RunFlowchartTracer implements ExecutionListener, GraphWriter {
 
     @Override
     public void process(MutableGraph g, ChartOverlay overlay) {
-        System.out.println("Collected " + nodes.size() + " nodes");
+        LOGGER.info("Collected " + nodes.size() + " nodes");
         final int[] i = {1};
         nodes.stream().filter(n -> !n.isPassthrough()).forEach(n -> {
-            System.out.println(i[0]);
+            LOGGER.finer(String.valueOf(i[0]));
             i[0]++;
 //            System.out.println("Processing node: " + n.getClass().getSimpleName() + "/" + n.id());
             FlowNode block = overlay.block(n);

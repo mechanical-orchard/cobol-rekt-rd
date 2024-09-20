@@ -1,14 +1,15 @@
 package org.smojol.common.vm.expression;
 
+import com.google.common.collect.ImmutableList;
 import lombok.Setter;
 import org.eclipse.lsp.cobol.core.CobolParser;
 import org.smojol.common.vm.structure.CobolDataStructure;
 import org.smojol.common.vm.structure.ConditionalDataStructure;
 import org.smojol.common.vm.structure.NullDataStructure;
 import org.smojol.common.vm.reference.CobolReference;
-import org.smojol.common.vm.reference.DeepReferenceBuilder;
+import org.smojol.common.vm.reference.CobolReferenceBuilder;
 
-public class SimpleConditionVisitor extends CobolExpressionVisitor {
+public class SimpleConditionVisitor extends AntlrCobolExpressionVisitor {
     private final CobolExpression mostRecentLhs;
     private final ComparisonOperator mostRecentRelationalOperation;
     private final CobolDataStructure dataRoot;
@@ -24,21 +25,22 @@ public class SimpleConditionVisitor extends CobolExpressionVisitor {
 
     @Override
     public CobolExpression visitSimpleCondition(CobolParser.SimpleConditionContext ctx) {
-        ArithmeticExpressionVisitor arithmeticExpressionVisitor = new ArithmeticExpressionVisitor();
-        ctx.arithmeticExpression().accept(arithmeticExpressionVisitor);
-        lhs = arithmeticExpressionVisitor.getExpression();
-        if (lhs.getClass() == VariableExpression.class) {
-            CobolParser.QualifiedDataNameContext qualifiedDataNameContext = ((VariableExpression) lhs).getQualifiedDataNameContext();
-            CobolReference reference = new DeepReferenceBuilder().getReference(qualifiedDataNameContext, dataRoot);
-            String variableName = qualifiedDataNameContext.getText();
+        lhs = new CobolExpressionBuilder().arithmetic(ctx.arithmeticExpression());
+        if (lhs instanceof VariableExpression varExpr) {
+            CobolReference reference = new CobolReferenceBuilder().getReference(varExpr.getName(), dataRoot);
             CobolDataStructure resolved = reference.resolve();
             if (resolved.getClass() == NullDataStructure.class) {
-                // TODO: Tempt fix for variables which don't directly appear in data structures like indexes in INDEXED BY clauses
+                // TODO: Temp fix for variables which don't directly appear in data structures like indexes in INDEXED BY clauses
                 expression = new PrimitiveCobolExpression(resolved.getValue());
                 return expression;
-            } else if (resolved.getClass() == ConditionalDataStructure.class) {
-                expression = lhs;
+            } else if (resolved instanceof ConditionalDataStructure cds) {
+                // TODO: This can be more than just equality
+                expression = new SimpleConditionExpression(new VariableExpression(cds.parent().name()), new RelationExpression(RelationalOperation.EQUAL, new VariableExpression(cds.name())));
+                expression = new FunctionCallExpression("isInRange", ImmutableList.of(new VariableExpression(cds.parent().name()), new VariableExpression(cds.name())));
                 return expression;
+//                cds.parent().
+//                expression = lhs;
+//                return expression;
             }
         }
         if (ctx.fixedComparison() != null) {
@@ -53,7 +55,7 @@ public class SimpleConditionVisitor extends CobolExpressionVisitor {
                 expression = new SimpleConditionExpression(lhs).standalone();
             } else {
                 // Abbreviated condition
-                expression = new SimpleConditionExpression(mostRecentLhs, relation).standalone();
+                expression = new SimpleConditionExpression(mostRecentLhs, relation);
             }
             return expression;
         }

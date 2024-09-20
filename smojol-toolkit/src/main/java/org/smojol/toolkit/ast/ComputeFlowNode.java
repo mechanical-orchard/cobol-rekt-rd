@@ -5,17 +5,23 @@ import lombok.Getter;
 import org.antlr.v4.runtime.tree.ParseTree;
 import org.eclipse.lsp.cobol.core.CobolParser;
 import org.smojol.common.ast.*;
+import org.smojol.common.pseudocode.SmojolSymbolTable;
+import org.smojol.common.vm.expression.CobolExpression;
+import org.smojol.common.vm.expression.CobolExpressionBuilder;
 import org.smojol.common.vm.interpreter.CobolInterpreter;
 import org.smojol.common.vm.interpreter.CobolVmSignal;
 import org.smojol.common.vm.interpreter.FlowControl;
 import org.smojol.common.vm.stack.StackFrames;
+import org.smojol.common.vm.structure.CobolDataStructure;
 
 import java.util.List;
 
 @Getter
 public class ComputeFlowNode extends CobolFlowNode {
-    private List<CobolParser.ComputeStoreContext> destinations;
-    private CobolParser.ArithmeticExpressionContext rhs;
+    @Getter private List<CobolParser.ComputeStoreContext> destinations;
+    @Getter private CobolParser.ArithmeticExpressionContext rhs;
+    private CobolExpression rhsExpression;
+    private List<CobolExpression> destinationExpressions;
 
     public ComputeFlowNode(ParseTree parseTree, FlowNode scope, FlowNodeService nodeService, StackFrames stackFrames) {
         super(parseTree, scope, nodeService, stackFrames);
@@ -46,7 +52,14 @@ public class ComputeFlowNode extends CobolFlowNode {
     }
 
     @Override
-    public List<FlowNodeCategory> categories() {
-        return ImmutableList.of(FlowNodeCategory.COMPUTATIONAL, FlowNodeCategory.DATA_FLOW);
+    public List<SemanticCategory> categories() {
+        return ImmutableList.of(SemanticCategory.COMPUTATIONAL, SemanticCategory.DATA_FLOW);
+    }
+
+    @Override
+    public void resolve(SmojolSymbolTable symbolTable, CobolDataStructure dataStructures) {
+        CobolExpressionBuilder builder = new CobolExpressionBuilder();
+        rhsExpression = builder.arithmetic(rhs);
+        destinationExpressions = destinations.stream().map(dest -> builder.identifier(dest.generalIdentifier())).toList();
     }
 }

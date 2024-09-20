@@ -5,9 +5,12 @@ import lombok.Getter;
 import org.antlr.v4.runtime.tree.ParseTree;
 import org.eclipse.lsp.cobol.core.CobolDataDivisionParser;
 import org.smojol.common.ast.*;
+import org.smojol.common.pseudocode.CodeSentinelType;
+import org.smojol.common.pseudocode.SmojolSymbolTable;
 import org.smojol.common.vm.interpreter.CobolInterpreter;
 import org.smojol.common.vm.interpreter.CobolVmSignal;
 import org.smojol.common.vm.interpreter.FlowControl;
+import org.smojol.common.vm.structure.CobolDataStructure;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -67,8 +70,13 @@ public class GenericProcessingFlowNode implements FlowNode {
     }
 
     @Override
-    public List<FlowNodeCategory> categories() {
-        return ImmutableList.of(FlowNodeCategory.CODE_BLOCK);
+    public List<SemanticCategory> categories() {
+        return ImmutableList.of(SemanticCategory.CODE_BLOCK);
+    }
+
+    @Override
+    public CodeSentinelType codeSentinelType() {
+        return CodeSentinelType.BODY;
     }
 
     @Override
@@ -88,6 +96,11 @@ public class GenericProcessingFlowNode implements FlowNode {
 
     @Override
     public void acceptUnvisited(FlowNodeVisitor visitor, int level) {
+
+    }
+
+    @Override
+    public void resolve(SmojolSymbolTable symbolTable, CobolDataStructure dataStructures) {
 
     }
 
@@ -113,11 +126,6 @@ public class GenericProcessingFlowNode implements FlowNode {
 
     @Override
     public void addIncomingNode(FlowNode flowNode) {
-    }
-
-    @Override
-    public DomainDocument getNotes() {
-        return new DomainDocument();
     }
 
     @Override
@@ -186,6 +194,16 @@ public class GenericProcessingFlowNode implements FlowNode {
     @Override
     public List<CommentBlock> getCommentBlocks() {
         return ImmutableList.of();
+    }
+
+    @Override
+    public void addChild(FlowNode child) {
+
+    }
+
+    @Override
+    public void buildTwin() {
+
     }
 
     @Override

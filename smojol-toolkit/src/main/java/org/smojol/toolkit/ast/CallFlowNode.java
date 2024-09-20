@@ -9,7 +9,7 @@ import org.smojol.common.vm.stack.StackFrames;
 
 import java.util.List;
 
-public class CallFlowNode extends CobolFlowNode implements ControlFlowNode {
+public class CallFlowNode extends CobolFlowNode implements ExternalControlFlowNode {
     @Getter
     private final CallTarget callTarget;
 
@@ -35,7 +35,7 @@ public class CallFlowNode extends CobolFlowNode implements ControlFlowNode {
     }
 
     @Override
-    public List<FlowNodeCategory> categories() {
-        return ImmutableList.of(FlowNodeCategory.CONTROL_FLOW);
+    public List<SemanticCategory> categories() {
+        return ImmutableList.of(SemanticCategory.CONTROL_FLOW);
     }
 }

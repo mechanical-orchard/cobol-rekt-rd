@@ -2,24 +2,40 @@ package org.smojol.common.vm.expression;
 
 import com.google.common.collect.ImmutableList;
 import lombok.Getter;
-import org.eclipse.lsp.cobol.core.CobolParser;
 import org.smojol.common.vm.structure.CobolDataStructure;
+import org.smojol.common.vm.type.AbstractCobolType;
 import org.smojol.common.vm.type.TypedRecord;
 import org.smojol.common.vm.reference.CobolReference;
-import org.smojol.common.vm.reference.DeepReferenceBuilder;
+import org.smojol.common.vm.reference.CobolReferenceBuilder;
 
 public class VariableExpression extends CobolExpression {
-    @Getter private final CobolParser.QualifiedDataNameContext qualifiedDataNameContext;
+    @Getter private final String name;
 
-    public VariableExpression(CobolParser.QualifiedDataNameContext qualifiedDataNameContext) {
-        super(ImmutableList.of());
-        this.qualifiedDataNameContext = qualifiedDataNameContext;
+    public VariableExpression(String name) {
+        super(ImmutableList.of(), "VAR");
+        this.name = name;
     }
 
     @Override
     public CobolExpression evaluate(CobolDataStructure data) {
-        CobolReference ref = new DeepReferenceBuilder().getReference(qualifiedDataNameContext, data);
-        TypedRecord value = ref.resolve().getValue();
-        return value == TypedRecord.NULL ? new NullCobolExpression(qualifiedDataNameContext.getText()) : new PrimitiveCobolExpression(value);
+        CobolDataStructure structure = data.reference(name);
+        TypedRecord value = structure.getValue();
+        return value == TypedRecord.NULL ? new NullCobolExpression(name) : new PrimitiveCobolExpression(value);
+    }
+
+    @Override
+    public String description() {
+        return operationMnemonic + "('" + name + "')";
+    }
+
+    @Override
+    public AbstractCobolType expressionType(CobolDataStructure dataStructures) {
+        return dataStructures.reference(name).getDataType().abstractType();
+    }
+
+    @Override
+    public CobolDataStructure reference(CobolDataStructure data) {
+        CobolReference ref = new CobolReferenceBuilder().getReference(name, data);
+        return ref.resolve();
     }
 }

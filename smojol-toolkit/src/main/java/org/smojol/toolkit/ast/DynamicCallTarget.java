@@ -7,8 +7,10 @@ import org.smojol.common.program.StaticCallTarget;
 import org.smojol.common.pseudocode.PseudocodeInstruction;
 
 import java.util.List;
+import java.util.logging.Logger;
 
 public class DynamicCallTarget extends CallTarget {
+    private static final Logger LOGGER = Logger.getLogger(DynamicCallTarget.class.getName());
     private CobolParser.GeneralIdentifierContext cobolIdentifier;
     private IdmsParser.GeneralIdentifierContext idmsIdentifier;
 
@@ -26,7 +28,7 @@ public class DynamicCallTarget extends CallTarget {
     @Override
     public CallTarget resolve(PseudocodeInstruction instruction, List<PseudocodeInstruction> instructions) {
         int transferIndex = instructions.indexOf(instruction);
-        String variableName = ((ControlFlowNode) instruction.getNode()).callTarget().getName();
+        String variableName = ((ExternalControlFlowNode) instruction.getNode()).callTarget().getName();
         int searchIndex = transferIndex - 1;
         while (searchIndex >= 0 && transferIndex - searchIndex <= 5) {
             PseudocodeInstruction candidateInstruction = instructions.get(searchIndex);
@@ -53,7 +55,7 @@ public class DynamicCallTarget extends CallTarget {
             }
 
             String resolvedTarget = froms.literal().getText();
-            System.out.printf("Resolved a target: %s to %s %n", variableName, resolvedTarget);
+            LOGGER.finer(String.format("Resolved a target: %s to %s", variableName, resolvedTarget));
             return new StaticCallTarget(resolvedTarget);
         }
 

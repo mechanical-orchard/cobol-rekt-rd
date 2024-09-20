@@ -1,13 +1,15 @@
 package org.smojol.common.ast;
 
 import org.antlr.v4.runtime.tree.ParseTree;
+import org.smojol.common.pseudocode.SmojolSymbolTable;
 import org.smojol.common.vm.interpreter.CobolInterpreter;
 import org.smojol.common.vm.interpreter.CobolVmSignal;
 import org.smojol.common.vm.interpreter.FlowControl;
+import org.smojol.common.vm.structure.CobolDataStructure;
 
 import java.util.List;
 
-public interface FlowNode {
+public interface FlowNode extends FlowNodeLike {
     void buildFlow();
     void buildOutgoingFlow();
     void buildInternalFlow();
@@ -26,6 +28,7 @@ public interface FlowNode {
     void accept(FlowNodeVisitor visitor, int level);
     void accept(FlowNodeVisitor visitor, FlowNodeCondition stopCondition, int level);
     void acceptUnvisited(FlowNodeVisitor visitor, int level);
+    void resolve(SmojolSymbolTable symbolTable, CobolDataStructure dataStructures);
 
     List<? extends ParseTree> getChildren();
 
@@ -33,20 +36,11 @@ public interface FlowNode {
     FlowNode tail();
     List<FlowNode> astChildren();
 
-    DomainDocument getNotes();
-
     boolean accessesDatabase();
     boolean isMergeable();
     boolean contains(FlowNode node);
 
-    String id();
-    String label();
-    String name();
-    String originalText();
     ParseTree getExecutionContext();
-    FlowNodeType type();
-    List<FlowNodeCategory> categories();
-
     FlowNode passthrough();
 
     // TODO: Might just be data instead of inheritance
@@ -57,4 +51,8 @@ public interface FlowNode {
     void addComment(CommentBlock cb);
 
     List<CommentBlock> getCommentBlocks();
+
+    void addChild(FlowNode child);
+
+    void buildTwin();
 }

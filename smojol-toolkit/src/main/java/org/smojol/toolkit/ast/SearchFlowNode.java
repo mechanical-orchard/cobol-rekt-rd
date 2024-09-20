@@ -5,17 +5,24 @@ import lombok.Getter;
 import org.antlr.v4.runtime.tree.ParseTree;
 import org.eclipse.lsp.cobol.core.CobolParser;
 import org.smojol.common.ast.*;
+import org.smojol.common.pseudocode.SmojolSymbolTable;
+import org.smojol.common.vm.expression.CobolExpression;
+import org.smojol.common.vm.expression.CobolExpressionBuilder;
 import org.smojol.common.vm.interpreter.CobolInterpreter;
 import org.smojol.common.vm.interpreter.CobolVmSignal;
 import org.smojol.common.vm.interpreter.FlowControl;
 import org.smojol.common.vm.stack.StackFrames;
+import org.smojol.common.vm.structure.CobolDataStructure;
 
+import java.util.ArrayList;
 import java.util.List;
 
+@Getter
 public class SearchFlowNode extends CobolFlowNode {
     private FlowNode atEndBlock;
     private List<FlowNode> whenPhrases;
-    @Getter private CobolParser.QualifiedDataNameContext searchTerm;
+    private CobolParser.QualifiedDataNameContext searchTerm;
+    private CobolExpression searchExpression;
 
     public SearchFlowNode(ParseTree parseTree, FlowNode scope, FlowNodeService nodeService, StackFrames stackFrames) {
         super(parseTree, scope, nodeService, stackFrames);
@@ -82,7 +89,21 @@ public class SearchFlowNode extends CobolFlowNode {
     }
 
     @Override
-    public List<FlowNodeCategory> categories() {
-        return ImmutableList.of(FlowNodeCategory.SEARCH);
+    public void resolve(SmojolSymbolTable symbolTable, CobolDataStructure dataStructures) {
+        searchExpression = new CobolExpressionBuilder().identifier(searchTerm);
+        whenPhrases.forEach(w -> w.resolve(symbolTable, dataStructures));
+    }
+
+    @Override
+    public List<SemanticCategory> categories() {
+        return ImmutableList.of(SemanticCategory.SEARCH);
+    }
+
+    @Override
+    public List<FlowNode> astChildren() {
+        List<FlowNode> children = new ArrayList<>();
+        if (endPhraseExists()) children.add(atEndBlock);
+        children.addAll(whenPhrases);
+        return children;
     }
 }

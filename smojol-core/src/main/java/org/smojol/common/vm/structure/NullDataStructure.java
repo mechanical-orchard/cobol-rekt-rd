@@ -11,11 +11,13 @@ import org.smojol.common.vm.type.CobolDataType;
 
 import java.util.List;
 import java.util.function.Function;
+import java.util.logging.Logger;
 
 /**
  * Only used as a placeholder for
  */
 public class NullDataStructure extends CobolDataStructure {
+    private static final java.util.logging.Logger LOGGER = Logger.getLogger(NullDataStructure.class.getName());
     private final String referenceID;
 
     public NullDataStructure(String referenceID) {
@@ -67,37 +69,7 @@ public class NullDataStructure extends CobolDataStructure {
     }
 
     @Override
-    public void set(String destinationRecordID, CobolReference ref) {
-
-    }
-
-    @Override
-    public void reset(String recordID) {
-
-    }
-
-    @Override
     public void reset() {
-
-    }
-
-    @Override
-    public void add(String recordID, CobolReference ref) {
-
-    }
-
-    @Override
-    public void subtract(String recordID, CobolReference ref) {
-
-    }
-
-    @Override
-    public void multiply(String recordID, CobolReference ref) {
-
-    }
-
-    @Override
-    public void divide(String recordID, CobolReference ref) {
 
     }
 
@@ -153,7 +125,7 @@ public class NullDataStructure extends CobolDataStructure {
 
     @Override
     public TypedRecord getValue() {
-        System.out.println(ConsoleColors.red("WARNING: NULL value being accessed. This will be an empty string! Original reference ID: " + referenceID));
+        LOGGER.warning(ConsoleColors.red("NULL value being accessed. This will be an empty string! Original reference ID: " + referenceID));
         return TypedRecord.NULL;
     }
 

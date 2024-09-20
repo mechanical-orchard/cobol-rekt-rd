@@ -17,20 +17,23 @@ import org.smojol.toolkit.interpreter.stack.CobolStackFrames;
 import org.smojol.common.navigation.CobolEntityNavigator;
 import org.smojol.common.vm.structure.CobolDataStructure;
 
-import java.io.File;
-import java.io.IOException;
+import java.io.*;
+import java.util.ArrayList;
 import java.util.function.Function;
+import java.util.logging.Logger;
 
 import static guru.nidi.graphviz.model.Factory.mutGraph;
 import static guru.nidi.graphviz.model.Factory.mutNode;
 
 public class FlowchartBuilderImpl implements FlowchartBuilder {
+    java.util.logging.Logger LOGGER = Logger.getLogger(FlowchartBuilderImpl.class.getName());
     private final FlowNodeService flowNodeService;
     private final CobolDataStructure dataStructures;
     private FlowNode graphRoot;
     private CobolEntityNavigator cobolEntityNavigator;
     private MutableGraph graph;
     private ChartOverlay overlay;
+    private ArrayList<String> mermaidGraph;
 
     public FlowchartBuilderImpl(CobolEntityNavigator cobolEntityNavigator, CobolDataStructure dataStructures, IdProvider idProvider) {
         this.cobolEntityNavigator = cobolEntityNavigator;
@@ -41,13 +44,13 @@ public class FlowchartBuilderImpl implements FlowchartBuilder {
     }
 
     @Override
-    public FlowchartBuilder buildDotStructure(Function<VisitContext, Boolean> stopCondition) {
+    public FlowchartBuilder buildDotStructure(Function<VisitContext, Boolean> stopCondition, FlowchartOutputFormat flowchartOutputFormat) {
         return buildChartGraphic(stopCondition);
     }
 
     @Override
-    public FlowchartBuilder buildDotStructure() {
-        return buildDotStructure(VisitContext::ALWAYS_VISIT);
+    public FlowchartBuilder buildDotStructure(FlowchartOutputFormat flowchartOutputFormat) {
+        return buildDotStructure(VisitContext::ALWAYS_VISIT, flowchartOutputFormat);
     }
 
     @Override
@@ -66,7 +69,7 @@ public class FlowchartBuilderImpl implements FlowchartBuilder {
     }
 
     @Override
-    public FlowchartBuilder write(String dotFilePath) {
+    public FlowchartBuilder write(String dotFilePath, FlowchartOutputFormat outputFormat) {
         try {
             Graphviz.fromGraph(graph).engine(Engine.DOT)
                     .render(Format.DOT)
@@ -91,7 +94,7 @@ public class FlowchartBuilderImpl implements FlowchartBuilder {
     public FlowchartBuilder connectToComment(String explanation, ParseTree symbol) {
         FlowNode explainedNode = flowNodeService.existingNode(symbol);
         if (explainedNode == null) return this;
-        System.out.println(String.format("Linking EXPLANATION : %s to %s", explanation, explainedNode));
+        LOGGER.finer(String.format("Linking EXPLANATION : %s to %s", explanation, explainedNode));
         MutableNode explanationNode = mutNode(formatted(explanation, 30));
         MutableNode explainedTarget = mutNode(explainedNode.toString());
         graph.add(explanationNode.addLink(explanationNode.linkTo(explainedTarget).with("color", Color.LIGHTGREY.value)));
@@ -127,8 +130,8 @@ public class FlowchartBuilderImpl implements FlowchartBuilder {
                 .buildControlFlow()
                 .buildOverlay()
 //        .buildDotStructure(VisitContext.VISIT_UPTO_LEVEL(4)) // Level 4 for only sections and paragraphs
-                .buildDotStructure()
-                .write(dotFilePath);
+                .buildDotStructure(outputFormat)
+                .write(dotFilePath, outputFormat);
         new GraphGenerator(outputFormat).generateImage(dotFilePath, imageOutputPath);
     }
 

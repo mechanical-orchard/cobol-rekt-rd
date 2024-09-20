@@ -2,6 +2,7 @@ package org.smojol.common.vm.expression;
 
 import com.google.common.collect.ImmutableList;
 import org.smojol.common.vm.structure.CobolDataStructure;
+import org.smojol.common.vm.type.AbstractCobolType;
 import org.smojol.common.vm.type.TypedRecord;
 
 import java.util.function.Function;
@@ -10,7 +11,7 @@ public class PrimitiveCobolExpression extends CobolExpression {
     private final TypedRecord value;
 
     public PrimitiveCobolExpression(TypedRecord value) {
-        super(ImmutableList.of());
+        super(ImmutableList.of(), "PRIMITIVE");
         this.value = value;
     }
 
@@ -19,7 +20,7 @@ public class PrimitiveCobolExpression extends CobolExpression {
     }
 
     public PrimitiveCobolExpression(CobolExpression value) {
-        super(ImmutableList.of());
+        super(ImmutableList.of(), "PRIMITIVE");
         this.value = unwrapped(value);
     }
 
@@ -40,6 +41,16 @@ public class PrimitiveCobolExpression extends CobolExpression {
     @Override
     public CobolExpression evaluate(CobolDataStructure data) {
         return this;
+    }
+
+    @Override
+    public String description() {
+        return operationMnemonic + "(" + value.toString() + ")";
+    }
+
+    @Override
+    public AbstractCobolType expressionType(CobolDataStructure dataStructures) {
+        return value.dataType().abstractType();
     }
 
     @Override
@@ -98,17 +109,17 @@ public class PrimitiveCobolExpression extends CobolExpression {
     }
 
     @Override
-    protected CobolExpression subtract(CobolExpression other, CobolDataStructure dataStructures) {
+    public CobolExpression subtract(CobolExpression other, CobolDataStructure dataStructures) {
         return returnIf(o -> new PrimitiveCobolExpression(value.subtract(o.value)), other);
     }
 
     @Override
-    protected CobolExpression divide(CobolExpression other, CobolDataStructure dataStructures) {
+    public CobolExpression divide(CobolExpression other, CobolDataStructure dataStructures) {
         return returnIf(o -> new PrimitiveCobolExpression(value.divide(o.value)), other);
     }
 
     @Override
-    protected CobolExpression multiply(CobolExpression other, CobolDataStructure dataStructures) {
+    public CobolExpression multiply(CobolExpression other, CobolDataStructure dataStructures) {
         return returnIf(o -> new PrimitiveCobolExpression(value.multiply(o.value)), other);
     }
 
@@ -134,9 +145,11 @@ public class PrimitiveCobolExpression extends CobolExpression {
         return evaluation.apply(otherPrimitiveExpression);
     }
 
+    // TODO: Opportunity to automatically extract or resolve values
+    // Evaluate other, and verify that the RESULT is PrimitiveCobolExpression
+    // Don't need to be so strict
     private boolean isCompatibleWith(CobolExpression other) {
-        return true;
-//        if (!(other instanceof PrimitiveCobolExpression)) return false;
+        return other instanceof PrimitiveCobolExpression;
 //        PrimitiveCobolExpression otherPrimitiveExpression = (PrimitiveCobolExpression) other;
 //        return value.isCompatibleWith(otherPrimitiveExpression.value);
     }

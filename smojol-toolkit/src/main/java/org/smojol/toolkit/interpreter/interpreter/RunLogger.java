@@ -2,17 +2,20 @@ package org.smojol.toolkit.interpreter.interpreter;
 
 import org.smojol.common.ast.FlowNode;
 import org.smojol.common.ast.FlowNodeService;
-import org.smojol.toolkit.ast.AddFlowNode;
-import org.smojol.toolkit.ast.IfFlowNode;
-import org.smojol.toolkit.ast.MoveFlowNode;
 import org.smojol.common.vm.interpreter.ExecutionListener;
 
 import java.io.FileWriter;
 import java.io.IOException;
+import java.util.logging.Logger;
 
 public class RunLogger implements ExecutionListener {
+    private static final Logger LOGGER = Logger.getLogger(RunLogger.class.getName());
     private final StringBuilder sb = new StringBuilder();
-    private String path = "/Users/asgupta/Downloads/poc/report.md";
+    private final String path;
+
+    public RunLogger(String outputPath) {
+        this.path = outputPath;
+    }
 
     public void close() throws IOException {
         write();
@@ -28,11 +31,12 @@ public class RunLogger implements ExecutionListener {
 
     @Override
     public void notify(String message, FlowNode node, FlowNodeService nodeService) {
-        if (node.getClass() == MoveFlowNode.class ||
-                node.getClass() == AddFlowNode.class ||
-                node.getClass() == IfFlowNode.class)
-            sb.append(message + "\n");
-        System.out.println(message);
+//        if (node.getClass() == MoveFlowNode.class ||
+//                node.getClass() == AddFlowNode.class ||
+//                node.getClass() == IfFlowNode.class)
+//            sb.append(message).append("\n");
+//        System.out.println(message);
+        LOGGER.info(message);
     }
 
     @Override

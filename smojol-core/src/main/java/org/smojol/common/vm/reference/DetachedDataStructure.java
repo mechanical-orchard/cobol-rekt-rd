@@ -9,7 +9,6 @@ import org.smojol.common.vm.structure.AccessChain;
 import org.smojol.common.vm.structure.CobolDataStructure;
 import org.smojol.common.vm.structure.ConditionalDataStructure;
 import org.smojol.common.vm.structure.NamingScheme;
-import org.smojol.common.vm.type.CobolDataType;
 import org.smojol.common.vm.type.TypedRecord;
 
 import java.util.List;
@@ -27,7 +26,7 @@ public class DetachedDataStructure extends CobolDataStructure {
     }
 
     private DetachedDataStructure(String name, TypedRecord value, String rawText) {
-        super(name, -1, CobolDataType.DETACHED, rawText, SourceSection.PROCEDURE_DIVISION);
+        super(name, -1, value.dataType(), rawText, SourceSection.PROCEDURE_DIVISION);
         this.value = value;
     }
 
@@ -77,16 +76,6 @@ public class DetachedDataStructure extends CobolDataStructure {
     }
 
     @Override
-    public void set(String destinationRecordID, CobolReference ref) {
-
-    }
-
-    @Override
-    public void reset(String recordID) {
-
-    }
-
-    @Override
     public void reset() {
 
     }
@@ -99,26 +88,6 @@ public class DetachedDataStructure extends CobolDataStructure {
     @Override
     public CobolDataStructure cobolIndex(int index) {
         throw new UnsupportedOperationException("Indexing is not supported for detached structures");
-    }
-
-    @Override
-    public void add(String recordID, CobolReference ref) {
-
-    }
-
-    @Override
-    public void subtract(String recordID, CobolReference ref) {
-
-    }
-
-    @Override
-    public void multiply(String recordID, CobolReference ref) {
-
-    }
-
-    @Override
-    public void divide(String recordID, CobolReference ref) {
-
     }
 
     @Override

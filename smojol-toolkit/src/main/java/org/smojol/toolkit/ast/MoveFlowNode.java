@@ -5,10 +5,15 @@ import lombok.Getter;
 import org.antlr.v4.runtime.tree.ParseTree;
 import org.eclipse.lsp.cobol.core.CobolParser;
 import org.smojol.common.ast.*;
+import org.smojol.common.pseudocode.SmojolSymbolTable;
+import org.smojol.common.vm.expression.CobolExpression;
+import org.smojol.common.vm.expression.CobolExpressionBuilder;
 import org.smojol.common.vm.interpreter.CobolInterpreter;
 import org.smojol.common.vm.interpreter.CobolVmSignal;
 import org.smojol.common.vm.interpreter.FlowControl;
 import org.smojol.common.vm.stack.StackFrames;
+import org.smojol.common.vm.structure.CobolDataStructure;
+import org.smojol.common.vm.type.AbstractCobolType;
 
 import java.util.List;
 
@@ -16,6 +21,8 @@ import java.util.List;
 public class MoveFlowNode extends CobolFlowNode {
     private CobolParser.MoveToSendingAreaContext from;
     private List<CobolParser.GeneralIdentifierContext> tos;
+    private CobolExpression fromExpression;
+    private List<CobolExpression> toExpressions;
 
     public MoveFlowNode(ParseTree parseTree, FlowNode scope, FlowNodeService nodeService, StackFrames stackFrames) {
         super(parseTree, scope, nodeService, stackFrames);
@@ -46,7 +53,18 @@ public class MoveFlowNode extends CobolFlowNode {
     }
 
     @Override
-    public List<FlowNodeCategory> categories() {
-        return ImmutableList.of(FlowNodeCategory.DATA_FLOW);
+    public List<SemanticCategory> categories() {
+        return ImmutableList.of(SemanticCategory.DATA_FLOW);
+    }
+
+    @Override
+    public void resolve(SmojolSymbolTable symbolTable, CobolDataStructure dataStructures) {
+        CobolParser.MoveStatementContext moveStatement = new SyntaxIdentity<CobolParser.MoveStatementContext>(executionContext).get();
+        CobolExpressionBuilder builder = new CobolExpressionBuilder();
+        toExpressions = moveStatement.moveToStatement().generalIdentifier().stream().map(builder::identifier).toList();
+        CobolParser.MoveToSendingAreaContext sendingArea = moveStatement.moveToStatement().moveToSendingArea();
+        AbstractCobolType expectedType = toExpressions.getFirst().expressionType(dataStructures);
+        // TODO: Maybe distribute this across multiple expressions, one corresponding to each destination, but with a separate type
+        fromExpression = sendingArea.literal() != null ? builder.literal(sendingArea.literal(), expectedType) : builder.identifier(sendingArea.generalIdentifier());
     }
 }

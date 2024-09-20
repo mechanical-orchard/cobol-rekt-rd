@@ -5,12 +5,12 @@ import hu.webarticum.treeprinter.SimpleTreeNode;
 import hu.webarticum.treeprinter.TreeNode;
 import hu.webarticum.treeprinter.printer.listing.ListingTreePrinter;
 import lombok.Getter;
+import org.eclipse.lsp.cobol.core.CobolDataTypes;
 import org.eclipse.lsp.cobol.core.CobolParser;
 import org.smojol.common.ast.CommentBlock;
 import org.smojol.common.flowchart.DataStructureVisitor;
 import org.smojol.common.structure.DataStructureContext;
 import org.smojol.common.structure.SourceSection;
-import org.smojol.common.vm.memory.DataLayoutBuilder;
 import org.smojol.common.vm.memory.MemoryLayout;
 import org.smojol.common.vm.memory.MemoryRegion;
 import org.smojol.common.vm.reference.CobolReference;
@@ -21,6 +21,10 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
 import java.util.function.Function;
+import java.util.function.Supplier;
+
+import static org.smojol.common.vm.memory.DataLayoutBuilder.parseSpec;
+import static org.smojol.common.vm.type.CobolDataType.*;
 
 public abstract class CobolDataStructure extends SimpleTreeNode {
     @Getter protected final CobolDataType dataType;
@@ -40,21 +44,12 @@ public abstract class CobolDataStructure extends SimpleTreeNode {
     public abstract String content();
     public abstract MemoryLayout layout();
     public abstract List<CobolDataStructure> matches(String recordID);
-
     public abstract CobolDataStructure addConditionalVariable(ConditionalDataStructure conditionalDataStructure);
     public abstract CobolDataStructure copy(Function<CobolParser.DataDescriptionEntryFormat1Context, String> namingScheme);
     public abstract void set(CobolReference ref);
-    @Deprecated public abstract void set(String destinationRecordID, CobolReference ref);
-    @Deprecated public abstract void reset(String recordID);
     public abstract void reset();
     public abstract TypedRecord getValue();
     public abstract CobolDataStructure cobolIndex(int index);
-
-    @Deprecated public abstract void add(String recordID, CobolReference ref);
-    @Deprecated public abstract void subtract(String recordID, CobolReference ref);
-    @Deprecated public abstract void multiply(String recordID, CobolReference ref);
-    @Deprecated public abstract void divide(String recordID, CobolReference ref);
-
     public abstract void add(CobolReference ref);
     public abstract void subtract(CobolReference ref);
     public abstract void multiply(CobolReference ref);
@@ -65,7 +60,9 @@ public abstract class CobolDataStructure extends SimpleTreeNode {
     public abstract void calculateMemoryRequirements();
     public abstract void allocateRecordPointers();
     public abstract boolean buildRedefinitions(CobolDataStructure root);
+
     public abstract int size();
+
     protected abstract void internalSet(TypedRecord r);
 
     @Override
@@ -77,12 +74,12 @@ public abstract class CobolDataStructure extends SimpleTreeNode {
         return new ArrayList<>(structures);
     }
 
-    public CobolDataStructure(String name, int levelNumber, CobolDataType dataType, String rawText, SourceSection sourceSection) {
+    protected CobolDataStructure(String name, int levelNumber, CobolDataType dataType, String rawText, SourceSection sourceSection) {
         this(name, new ArrayList<>(), levelNumber, null, false, dataType, rawText, sourceSection);
     }
 
     // Root constructor
-    public CobolDataStructure(int levelNumber) {
+    private CobolDataStructure(int levelNumber) {
         this("[ROOT]", levelNumber, CobolDataType.ROOT, "[ROOT]", SourceSection.ROOT);
     }
 
@@ -91,7 +88,7 @@ public abstract class CobolDataStructure extends SimpleTreeNode {
         super(name);
         this.rawText = rawText;
         this.sourceSection = sourceSection;
-        // TODO: Inject ID Provider. ID Provider is already present in DataStructureBuilder, inject it into all the constructors
+        // TODO: Inject ID Provider. ID Provider is already present in CobolDataStructureBuilder, inject it into all the constructors
         this.id = UUID.randomUUID().toString();
         this.name = name;
         this.dataType = dataType;
@@ -193,18 +190,47 @@ public abstract class CobolDataStructure extends SimpleTreeNode {
     protected abstract AccessChain typeSpecificChain(String subRecordID, AccessChain chain);
 
     protected static CobolDataType cobolDataType(CobolParser.DataDescriptionEntryFormat1Context dataDescription) {
-        return new DataLayoutBuilder().type(dataDescription);
+        if (dataDescription.dataOccursClause() != null && !dataDescription.dataOccursClause().isEmpty())
+            return CobolDataType.TABLE;
+        else if (isPointer(dataDescription)) return CobolDataType.POINTER;
+        if (dataDescription.dataPictureClause().isEmpty()) return GROUP;
+
+        // TODO: Handle multiple usage clauses?
+        String input = dataDescription.dataPictureClause().getFirst().pictureString().getFirst().getText();
+        CobolDataTypes.StartRuleContext root = parseSpec(input);
+        if (root.dataTypeSpec().fraction() != null) {
+            if (dataDescription.dataUsageClause().isEmpty()) return NUMERIC_EXTERNAL_DECIMAL;
+
+            CobolParser.UsageFormatContext usageFormatContext = dataDescription.dataUsageClause().getFirst().usageFormat();
+            if (usageFormatContext.COMP_3() != null
+                    || usageFormatContext.COMPUTATIONAL_3() != null
+                    || usageFormatContext.PACKED_DECIMAL() != null)
+                return COMPUTATIONAL3_DECIMAL;
+            return NUMERIC_EXTERNAL_DECIMAL;
+        } else if (root.dataTypeSpec().alphanumeric() != null) return STRING;
+        throw new UnsupportedOperationException("Unknown type: " + root.dataTypeSpec().getText());
+    }
+
+    private static <T> boolean chain(CobolParser.DataDescriptionEntryFormat1Context dataDescription, Supplier<T> levelNumber) {
+        return false;
+    }
+
+    private static boolean isPointer(CobolParser.DataDescriptionEntryFormat1Context dataDescription) {
+        return !dataDescription.dataUsageClause().isEmpty()
+                && (dataDescription.dataUsageClause().getFirst().usageFormat().POINTER() != null
+                || dataDescription.dataUsageClause().getFirst().usageFormat().POINTER_32() != null
+                || dataDescription.dataUsageClause().getFirst().usageFormat().PROCEDURE_POINTER() != null
+                || dataDescription.dataUsageClause().getFirst().usageFormat().FUNCTION_POINTER() != null
+        );
     }
 
     protected TypedRecord typed(Object v) {
-        return switch (dataType) {
-            case STRING, GROUP -> TypedRecord.typedString(v.toString());
-            case NUMBER -> TypedRecord.typedNumber(Double.parseDouble(v.toString()));
-            case BOOLEAN -> TypedRecord.typedBoolean(Boolean.parseBoolean(v.toString()));
-            case ROOT -> throw new IllegalArgumentException("Can't get value of root structure");
-            default ->
-                    throw new IllegalArgumentException("Can't get value of type " + dataType + " of structure " + v.toString());
-        };
+        if (dataType == STRING || dataType == GROUP) return TypedRecord.typedString(v.toString());
+        if (dataType == NUMERIC_EXTERNAL_DECIMAL || dataType == COMPUTATIONAL3_DECIMAL)
+            return TypedRecord.typedNumber(Double.parseDouble(v.toString()));
+        if (dataType == BOOLEAN) return TypedRecord.typedBoolean(Boolean.parseBoolean(v.toString()));
+        if (dataType == ROOT) return TypedRecord.typedBoolean(Boolean.parseBoolean(v.toString()));
+        throw new IllegalArgumentException("Can't get value of type " + dataType + " of structure " + v.toString());
     }
 
     public CobolDataStructure index(int index) {

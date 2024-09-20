@@ -5,15 +5,19 @@ import lombok.Getter;
 import org.antlr.v4.runtime.tree.ParseTree;
 import org.eclipse.lsp.cobol.core.CobolParser;
 import org.smojol.common.ast.*;
+import org.smojol.common.pseudocode.SmojolSymbolTable;
 import org.smojol.common.vm.interpreter.CobolInterpreter;
 import org.smojol.common.vm.interpreter.CobolVmSignal;
 import org.smojol.common.vm.interpreter.FlowControl;
 import org.smojol.common.vm.stack.StackFrames;
+import org.smojol.common.vm.structure.CobolDataStructure;
 
 import java.util.List;
 
-public class GenericOnClauseFlowNode extends CompositeCobolFlowNode {
-    @Getter private FlowNode condition;
+@Getter
+public class GenericOnClauseFlowNode extends CobolFlowNode {
+    private FlowNode condition;
+    private OnClauseActionsFlowNode onClauseBlock;
 
     public GenericOnClauseFlowNode(ParseTree parseTree, FlowNode scope, FlowNodeService nodeService, StackFrames stackFrames) {
         super(parseTree, scope, nodeService, stackFrames);
@@ -23,13 +27,14 @@ public class GenericOnClauseFlowNode extends CompositeCobolFlowNode {
     public void buildInternalFlow() {
         CobolParser.GenericOnClauseStatementContext onClause = new SyntaxIdentity<CobolParser.GenericOnClauseStatementContext>(executionContext).get();
         condition = nodeService.node(onClause.generalIdentifier(), this, staticFrameContext);
+        onClauseBlock = new OnClauseActionsFlowNode(onClause.onClauseBlock(), this, nodeService, staticFrameContext);
         super.buildInternalFlow();
     }
 
     @Override
     public List<? extends ParseTree> getChildren() {
         CobolParser.GenericOnClauseStatementContext onClause = new SyntaxIdentity<CobolParser.GenericOnClauseStatementContext>(executionContext).get();
-        return onClause.statement();
+        return ImmutableList.of(onClause.onClauseBlock());
     }
 
     @Override
@@ -50,11 +55,22 @@ public class GenericOnClauseFlowNode extends CompositeCobolFlowNode {
 
     @Override
     public void linkParentToChild(FlowNodeVisitor visitor, int level) {
-        visitor.visitParentChildLink(this, internalTreeRoot, new VisitContext(level), nodeService, CHILD_IS_CONDITIONAL_STATEMENT);
+        visitor.visitParentChildLink(this, onClauseBlock, new VisitContext(level), nodeService);
     }
 
     @Override
-    public List<FlowNodeCategory> categories() {
-        return ImmutableList.of(FlowNodeCategory.DECISION);
+    public List<SemanticCategory> categories() {
+        return ImmutableList.of(SemanticCategory.DECISION);
+    }
+
+    @Override
+    public List<FlowNode> astChildren() {
+        return ImmutableList.of(onClauseBlock);
+    }
+
+    @Override
+    public void resolve(SmojolSymbolTable symbolTable, CobolDataStructure dataStructures) {
+        condition.resolve(symbolTable, dataStructures);
+        onClauseBlock.resolve(symbolTable, dataStructures);
     }
 }

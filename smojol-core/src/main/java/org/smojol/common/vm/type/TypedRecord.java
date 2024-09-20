@@ -2,9 +2,10 @@ package org.smojol.common.vm.type;
 
 import java.util.Objects;
 import java.util.function.Supplier;
+import java.util.logging.Logger;
 
-// TODO: Might need polymorphic types at some point, addition of two strings, for example
 public final class TypedRecord {
+    private static final Logger LOGGER = Logger.getLogger(TypedRecord.class.getName());
     public static final TypedRecord NULL = new TypedRecord("NULL", CobolDataType.NULL);
     public static final TypedRecord TRUE = new TypedRecord(true, CobolDataType.BOOLEAN);
     public static final TypedRecord FALSE = new TypedRecord(false, CobolDataType.BOOLEAN);
@@ -18,14 +19,6 @@ public final class TypedRecord {
 
     private final ValueBasedComparator valueBasedComparator = new ValueBasedComparator();
 
-    public static TypedRecord demo(CobolDataType cobolDataType) {
-        if (cobolDataType == CobolDataType.STRING) return TypedRecord.typedString("SOME DEMO");
-        else if (cobolDataType == CobolDataType.NUMBER) return TypedRecord.typedNumber(250.);
-        else if (cobolDataType == CobolDataType.BOOLEAN) return TypedRecord.TRUE;
-        else if (cobolDataType == CobolDataType.GROUP) return TypedRecord.NULL;
-        throw new IllegalArgumentException("This is not a valid data type to generate data for: " + cobolDataType);
-    }
-
     public static TypedRecord typedNumber(String text) {
         return typedNumber(Double.parseDouble(text));
     }
@@ -38,6 +31,10 @@ public final class TypedRecord {
         return new TypedRecord(text, CobolDataType.STRING);
     }
 
+    public static TypedRecord pointer(long address) {
+        return new TypedRecord(address, CobolDataType.POINTER);
+    }
+
     @Override
     public boolean equals(Object obj) {
         if (this == obj) return true;
@@ -48,7 +45,7 @@ public final class TypedRecord {
     }
 
     public Double asNumber() {
-        if (dataType == CobolDataType.NUMBER) return (Double) value;
+        if (dataType.abstractType() == AbstractCobolType.NUMBER) return (Double) value;
         throw new IllegalArgumentException("Unsupported data type: " + dataType);
     }
 
@@ -95,7 +92,7 @@ public final class TypedRecord {
     }
 
     public static TypedRecord typedNumber(double v) {
-        return new TypedRecord(v, CobolDataType.NUMBER);
+        return new TypedRecord(v, CobolDataType.NUMERIC_EXTERNAL_DECIMAL);
     }
 
     public TypedRecord divide(TypedRecord other) {
@@ -129,6 +126,7 @@ public final class TypedRecord {
     }
 
     public boolean isCompatibleWith(TypedRecord other) {
+        LOGGER.finer(String.format("Comparing data types of %s and %s\n", this, other));
         return true;
 //        return dataType == other.dataType;
 //        return dataType == other.dataType ||

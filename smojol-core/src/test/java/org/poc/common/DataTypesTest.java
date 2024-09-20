@@ -1,5 +1,6 @@
 package org.poc.common;
 
+import com.google.common.collect.ImmutableList;
 import org.junit.jupiter.api.Test;
 import org.smojol.common.vm.exception.IllegalIndexException;
 import org.smojol.common.vm.memory.MemoryLayout;
@@ -183,7 +184,7 @@ public class DataTypesTest {
 
     @Test
     public void canSetSignedIntegers() {
-        DataTypeSpec numeric = new ZonedDecimalDataTypeSpec(3, 0, SignType.SIGNED);
+        DataTypeSpec numeric = new ZonedDecimalDataTypeSpec(3, 0, ZonedDecimalSignType.SIGNED);
         MemoryRegion memoryRegion = new MemoryRegion(numeric.sizeInBytes());
         MemoryLayout layout = new MemoryLayout(memoryRegion.fullAccess(), numeric);
         layout.set("-123");
@@ -194,7 +195,7 @@ public class DataTypesTest {
 
     @Test
     public void canInterpretRawDataAccordingToZOSBehaviour() {
-        DataTypeSpec numeric = new ZonedDecimalDataTypeSpec(5, 0, SignType.SIGNED);
+        DataTypeSpec numeric = new ZonedDecimalDataTypeSpec(5, 0, ZonedDecimalSignType.SIGNED);
         MemoryRegion memoryRegion = new MemoryRegion(numeric.sizeInBytes());
         MemoryLayout layout = new MemoryLayout(memoryRegion.fullAccess(), numeric);
         layout.setRaw("99.99");
@@ -204,7 +205,7 @@ public class DataTypesTest {
 
     @Test
     public void canInterpretDecimalPointInSignedFractionalNumbers() {
-        DataTypeSpec numeric = new ZonedDecimalDataTypeSpec(5, 0, SignType.SIGNED);
+        DataTypeSpec numeric = new ZonedDecimalDataTypeSpec(5, 0, ZonedDecimalSignType.SIGNED);
         MemoryRegion memoryRegion = new MemoryRegion(numeric.sizeInBytes());
         MemoryLayout layout = new MemoryLayout(memoryRegion.fullAccess(), numeric);
         layout.set("99.99");
@@ -216,7 +217,7 @@ public class DataTypesTest {
     @Test
 
     public void canInterpretSignedFractionalNumbers() {
-        DataTypeSpec numeric = new ZonedDecimalDataTypeSpec(2, 3, SignType.SIGNED);
+        DataTypeSpec numeric = new ZonedDecimalDataTypeSpec(2, 3, ZonedDecimalSignType.SIGNED);
         MemoryRegion memoryRegion = new MemoryRegion(numeric.sizeInBytes());
         MemoryLayout layout = new MemoryLayout(memoryRegion.fullAccess(), numeric);
         layout.set("12.34");
@@ -236,7 +237,7 @@ public class DataTypesTest {
 
     @Test
     public void canHandleSignsWithZoneRecalculationWithoutTruncating() {
-        DataTypeSpec numeric = new ZonedDecimalDataTypeSpec(3, 0, SignType.SIGNED);
+        DataTypeSpec numeric = new ZonedDecimalDataTypeSpec(3, 0, ZonedDecimalSignType.SIGNED);
         MemoryRegion memoryRegion = new MemoryRegion(numeric.sizeInBytes());
         MemoryLayout layout = new MemoryLayout(memoryRegion.fullAccess(), numeric);
         layout.setRaw("-6");
@@ -247,7 +248,7 @@ public class DataTypesTest {
 
     @Test
     public void canHandleSignsWithZoneRecalculationWithTruncating() {
-        DataTypeSpec numeric = new ZonedDecimalDataTypeSpec(2, 0, SignType.SIGNED);
+        DataTypeSpec numeric = new ZonedDecimalDataTypeSpec(2, 0, ZonedDecimalSignType.SIGNED);
         MemoryRegion memoryRegion = new MemoryRegion(numeric.sizeInBytes());
         MemoryLayout layout = new MemoryLayout(memoryRegion.fullAccess(), numeric);
         layout.setRaw("-6");
@@ -266,7 +267,7 @@ public class DataTypesTest {
 
     @Test
     public void doesNotHandleZOSSpecialCaseWhenInterpreterDoesNotIgnoreSignIfImpliedDecimalPointIsPresentAndRawDataHasNegative() {
-        DataTypeSpec numeric = new ZonedDecimalDataTypeSpec(2, 1, SignType.SIGNED);
+        DataTypeSpec numeric = new ZonedDecimalDataTypeSpec(2, 1, ZonedDecimalSignType.SIGNED);
         MemoryRegion memoryRegion = new MemoryRegion(numeric.sizeInBytes());
         MemoryLayout layout = new MemoryLayout(memoryRegion.fullAccess(), numeric);
         layout.setRaw("-6");
@@ -287,7 +288,7 @@ public class DataTypesTest {
 
     @Test
     public void canIgnoreSignInRawDataIfImpliedDecimalPointIsNotPresentOrRedundant() {
-        DataTypeSpec numeric = new ZonedDecimalDataTypeSpec(2, 0, SignType.SIGNED);
+        DataTypeSpec numeric = new ZonedDecimalDataTypeSpec(2, 0, ZonedDecimalSignType.SIGNED);
         MemoryRegion memoryRegion = new MemoryRegion(numeric.sizeInBytes());
         MemoryLayout layout = new MemoryLayout(memoryRegion.fullAccess(), numeric);
         layout.setRaw("-8426");
@@ -300,7 +301,7 @@ public class DataTypesTest {
 
     @Test
     public void canHandleZero() {
-        DataTypeSpec numeric = new ZonedDecimalDataTypeSpec(2, 3, SignType.SIGNED);
+        DataTypeSpec numeric = new ZonedDecimalDataTypeSpec(2, 3, ZonedDecimalSignType.SIGNED);
         MemoryRegion memoryRegion = new MemoryRegion(numeric.sizeInBytes());
         MemoryLayout layout = new MemoryLayout(memoryRegion.fullAccess(), numeric);
         layout.set("0.0");
@@ -313,7 +314,7 @@ public class DataTypesTest {
 
     @Test
     public void canSetEmptyStringOnSignedNumericInterpretedAsZero() {
-        DataTypeSpec numeric = new ZonedDecimalDataTypeSpec(2, 3, SignType.SIGNED);
+        DataTypeSpec numeric = new ZonedDecimalDataTypeSpec(2, 3, ZonedDecimalSignType.SIGNED);
         MemoryRegion memoryRegion = new MemoryRegion(numeric.sizeInBytes());
         MemoryLayout layout = new MemoryLayout(memoryRegion.fullAccess(), numeric);
         layout.set("");
@@ -322,7 +323,7 @@ public class DataTypesTest {
 
     @Test
     public void canSetEmptyStringOnUnsignedNumericInterpretedAsZero() {
-        DataTypeSpec numeric = new ZonedDecimalDataTypeSpec(2, 3, SignType.UNSIGNED);
+        DataTypeSpec numeric = new ZonedDecimalDataTypeSpec(2, 3, ZonedDecimalSignType.UNSIGNED);
         MemoryRegion memoryRegion = new MemoryRegion(numeric.sizeInBytes());
         MemoryLayout layout = new MemoryLayout(memoryRegion.fullAccess(), numeric);
         layout.set("");
@@ -331,7 +332,7 @@ public class DataTypesTest {
 
     @Test
     public void canIndexTableMemory() {
-        DataTypeSpec numeric = new ZonedDecimalDataTypeSpec(2, 3, SignType.UNSIGNED);
+        DataTypeSpec numeric = new ZonedDecimalDataTypeSpec(2, 3, ZonedDecimalSignType.UNSIGNED);
         TableSpec tableSpec = new TableSpec(numeric, 3);
         MemoryRegion memoryRegion = new MemoryRegion(tableSpec.sizeInBytes());
         assertEquals(15, tableSpec.sizeInBytes());
@@ -352,7 +353,7 @@ public class DataTypesTest {
 
     @Test
     public void cannotIndexNonTableMemory() {
-        DataTypeSpec numeric = new ZonedDecimalDataTypeSpec(2, 3, SignType.UNSIGNED);
+        DataTypeSpec numeric = new ZonedDecimalDataTypeSpec(2, 3, ZonedDecimalSignType.UNSIGNED);
         MemoryRegion numericMemoryRegion = new MemoryRegion(numeric.sizeInBytes());
         MemoryLayout numericLayout = new MemoryLayout(numericMemoryRegion.fullAccess(), numeric);
         IllegalIndexException nonTableSpecException1 = assertThrows(IllegalIndexException.class, () -> numericLayout.index(0));
@@ -367,7 +368,7 @@ public class DataTypesTest {
 
     @Test
     public void canErrorOnOutOfBoundsIndexAccess() {
-        DataTypeSpec numeric = new ZonedDecimalDataTypeSpec(2, 3, SignType.UNSIGNED);
+        DataTypeSpec numeric = new ZonedDecimalDataTypeSpec(2, 3, ZonedDecimalSignType.UNSIGNED);
         TableSpec tableSpec = new TableSpec(numeric, 3);
         MemoryRegion memoryRegion = new MemoryRegion(tableSpec.sizeInBytes());
         assertEquals(15, tableSpec.sizeInBytes());
@@ -379,6 +380,86 @@ public class DataTypesTest {
     }
 
     @Test
-    public void canErrorOnOutOfBoundsTableSpec() {
+    public void canAllocateCorrectNumberOfBytesBasedOnNumberOfDigitsInComp3DataType() {
+        assertEquals(3, new Comp3lDataTypeSpec(3, 2, Comp3SignType.UNSIGNED).sizeInBytes());
+        assertEquals(3, new Comp3lDataTypeSpec(2, 2, Comp3SignType.UNSIGNED).sizeInBytes());
+    }
+
+    @Test
+    public void canReadUnsignedComp3Item() {
+        Comp3lDataTypeSpec comp3lDataTypeSpec = new Comp3lDataTypeSpec(3, 2, Comp3SignType.UNSIGNED);
+        MemoryRegion memoryRegion = new MemoryRegion(comp3lDataTypeSpec.sizeInBytes());
+        MemoryLayout layout = new MemoryLayout(memoryRegion.fullAccess(), comp3lDataTypeSpec);
+        memoryRegion.write(HexMapper.asBytes(ImmutableList.of(0x01, 0x23, 0x4F)));
+        assertEquals(1234.0, layout.read());
+    }
+
+    @Test
+    public void canWriteUnsignedComp3Item() {
+        Comp3lDataTypeSpec comp3lDataTypeSpec = new Comp3lDataTypeSpec(2, 2, Comp3SignType.UNSIGNED);
+        MemoryRegion memoryRegion = new MemoryRegion(comp3lDataTypeSpec.sizeInBytes());
+        MemoryLayout layout = new MemoryLayout(memoryRegion.fullAccess(), comp3lDataTypeSpec);
+        layout.set("12.34");
+        assertMemory(memoryRegion, "01:23:4F");
+        assertEquals("12.34", layout.readFormatted().toString());
+    }
+
+    @Test
+    public void canTruncateLongerItemsUnsignedComp3Item() {
+        Comp3lDataTypeSpec comp3lDataTypeSpec = new Comp3lDataTypeSpec(2, 2, Comp3SignType.UNSIGNED);
+        MemoryRegion memoryRegion = new MemoryRegion(comp3lDataTypeSpec.sizeInBytes());
+        MemoryLayout layout = new MemoryLayout(memoryRegion.fullAccess(), comp3lDataTypeSpec);
+        layout.set("1234.56");
+        assertMemory(memoryRegion, "03:45:6F");
+        assertEquals("34.56", layout.readFormatted().toString());
+    }
+
+    @Test
+    public void canTruncateIntegersUnsignedComp3Item() {
+        Comp3lDataTypeSpec comp3lDataTypeSpec = new Comp3lDataTypeSpec(2, 2, Comp3SignType.UNSIGNED);
+        MemoryRegion memoryRegion = new MemoryRegion(comp3lDataTypeSpec.sizeInBytes());
+        MemoryLayout layout = new MemoryLayout(memoryRegion.fullAccess(), comp3lDataTypeSpec);
+        layout.set("1234");
+        assertMemory(memoryRegion, "03:40:0F");
+        assertEquals("34.0", layout.readFormatted().toString());
+    }
+
+    @Test
+    public void canPerformArithmeticOperationsWithUnsignedComp3Data() {
+        Comp3lDataTypeSpec comp3lDataTypeSpec = new Comp3lDataTypeSpec(2, 2, Comp3SignType.UNSIGNED);
+        MemoryRegion memoryRegion1 = new MemoryRegion(comp3lDataTypeSpec.sizeInBytes());
+        MemoryRegion memoryRegion2 = new MemoryRegion(comp3lDataTypeSpec.sizeInBytes());
+        MemoryRegion resultMemoryRegion = new MemoryRegion(comp3lDataTypeSpec.sizeInBytes());
+        MemoryLayout layout1 = new MemoryLayout(memoryRegion1.fullAccess(), comp3lDataTypeSpec);
+        MemoryLayout layout2 = new MemoryLayout(memoryRegion2.fullAccess(), comp3lDataTypeSpec);
+        MemoryLayout resultLayout = new MemoryLayout(resultMemoryRegion.fullAccess(), comp3lDataTypeSpec);
+        layout1.set("12.34");
+        layout2.set("12.34");
+        double sum = (Double) layout1.readFormatted() + (Double) layout2.readFormatted();
+        resultLayout.set(String.valueOf(sum));
+        assertEquals("24.68", resultLayout.readFormatted().toString());
+        assertEquals(2468.0, resultLayout.read());
+    }
+
+    @Test
+    public void canReadSignedComp3Item() {
+        Comp3lDataTypeSpec comp3lDataTypeSpec = new Comp3lDataTypeSpec(3, 2, Comp3SignType.SIGNED);
+        MemoryRegion memoryRegion = new MemoryRegion(comp3lDataTypeSpec.sizeInBytes());
+        MemoryLayout layout = new MemoryLayout(memoryRegion.fullAccess(), comp3lDataTypeSpec);
+        memoryRegion.write(HexMapper.asBytes(ImmutableList.of(0x01, 0x23, 0x4D)));
+        assertEquals(-1234.0, layout.read());
+    }
+
+    @Test
+    public void canWritePositiveAndNegativeSignedComp3Item() {
+        Comp3lDataTypeSpec comp3lDataTypeSpec = new Comp3lDataTypeSpec(2, 2, Comp3SignType.SIGNED);
+        MemoryRegion memoryRegion = new MemoryRegion(comp3lDataTypeSpec.sizeInBytes());
+        MemoryLayout layout = new MemoryLayout(memoryRegion.fullAccess(), comp3lDataTypeSpec);
+        layout.set("-12.34");
+        assertMemory(memoryRegion, "01:23:4D");
+        assertEquals(-1234.0, layout.read());
+        layout.set("12.34");
+        assertMemory(memoryRegion, "01:23:4C");
+        assertEquals(1234.0, layout.read());
     }
 }

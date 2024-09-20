@@ -13,6 +13,7 @@ public class FlowchartStylePreferences {
         schemes.put(FlowNodeType.PARAGRAPH_NAME, new GraphvizStyleScheme(Color.WHEAT, Color.BLACK, Shape.NONE));
         schemes.put(FlowNodeType.GENERIC_PROCESSING, new GraphvizStyleScheme(Color.WHEAT, Color.BLACK));
         schemes.put(FlowNodeType.ATOMIC, new GraphvizStyleScheme(Color.WHEAT, Color.BLACK, Shape.POINT));
+        schemes.put(FlowNodeType.STOP, new GraphvizStyleScheme(Color.DEEPSKYBLUE, Color.WHITE, Shape.CIRCLE));
         schemes.put(FlowNodeType.EXIT, new GraphvizStyleScheme(Color.RED3, Color.WHITE, Shape.DOUBLE_CIRCLE));
         schemes.put(FlowNodeType.SYMBOL, new GraphvizStyleScheme(Color.WHEAT, Color.BLACK, Shape.M_CIRCLE));
         schemes.put(FlowNodeType.DISPLAY, new GraphvizStyleScheme(Color.BLACK, Color.GREEN1));
@@ -41,6 +42,7 @@ public class FlowchartStylePreferences {
         schemes.put(FlowNodeType.PERFORM_TEST, new GraphvizStyleScheme(Color.WHITE, Color.BLACK, Shape.UNDERLINE));
         schemes.put(FlowNodeType.NEXT_SENTENCE, new GraphvizStyleScheme(Color.DARKSLATEGRAY4, Color.WHITE, Shape.R_ARROW));
         schemes.put(FlowNodeType.IF_BRANCH, new GraphvizStyleScheme(Color.CHOCOLATE4, Color.WHITE, Shape.DIAMOND));
+        schemes.put(FlowNodeType.EVALUATE, new GraphvizStyleScheme(Color.RED4, Color.WHITE, Shape.DIAMOND));
         schemes.put(FlowNodeType.CONDITIONAL_STATEMENT, new GraphvizStyleScheme(Color.CHOCOLATE4, Color.WHITE, Shape.POINT));
         schemes.put(FlowNodeType.CONDITION_CLAUSE, new GraphvizStyleScheme(Color.CHOCOLATE4, Color.WHITE, Shape.POINT));
         schemes.put(FlowNodeType.ON_CLAUSE, new GraphvizStyleScheme(Color.PURPLE4, Color.WHITE, Shape.HEXAGON));
@@ -49,12 +51,11 @@ public class FlowchartStylePreferences {
         schemes.put(FlowNodeType.BIND_RUN_UNIT, new GraphvizStyleScheme(Color.GREEN, Color.WHITE, Shape.L_ARROW));
         schemes.put(FlowNodeType.FINISH, new GraphvizStyleScheme(Color.RED, Color.WHITE, Shape.L_ARROW));
         schemes.put(FlowNodeType.DIALECT_CONTAINER, new GraphvizStyleScheme(Color.PURPLE4, Color.WHITE, Shape.PARALLELOGRAM));
+        schemes.put(FlowNodeType.ON_CLAUSE_ACTION, new GraphvizStyleScheme(Color.PURPLE4, Color.WHITE, Shape.BOX));
         schemes.put(FlowNodeType.DUMMY, new GraphvizStyleScheme(Color.DARKSLATEGRAY4, Color.WHITE));
     }
 
     public static GraphvizStyleScheme scheme(FlowNode node) {
         return schemes.get(node.type());
-//        if (node.getNotes().isEmpty()) return schemes.get(node.type());
-//        return new GraphvizStyleScheme(Color.AZURE4, Color.BLACK, Shape.NOTE, node.getNotes());
     }
 }

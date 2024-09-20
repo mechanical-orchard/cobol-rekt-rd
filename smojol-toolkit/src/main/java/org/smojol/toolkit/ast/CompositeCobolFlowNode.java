@@ -6,16 +6,20 @@ import org.antlr.v4.runtime.tree.ParseTree;
 import org.eclipse.lsp.cobol.core.CobolParser;
 import org.smojol.common.ast.*;
 import org.smojol.common.navigation.CobolEntityNavigator;
+import org.smojol.common.pseudocode.SmojolSymbolTable;
 import org.smojol.common.vm.interpreter.CobolInterpreter;
 import org.smojol.common.vm.interpreter.CobolVmSignal;
 import org.smojol.common.vm.interpreter.FlowControl;
 import org.smojol.common.vm.stack.StackFrames;
+import org.smojol.common.vm.structure.CobolDataStructure;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.logging.Logger;
 
 public class CompositeCobolFlowNode extends CobolFlowNode {
-    List<FlowNode> astChildren = new ArrayList<>();
+    private static final Logger logger = Logger.getLogger(CompositeCobolFlowNode.class.getName());
+    private final List<FlowNode> astChildren = new ArrayList<>();
     public static FlowNodeCondition CHILD_IS_CONDITIONAL_STATEMENT = node -> SyntaxIdentity.isOfType(node.getExecutionContext(), CobolParser.ConditionalStatementCallContext.class);
     protected FlowNode internalTreeRoot;
 
@@ -24,11 +28,15 @@ public class CompositeCobolFlowNode extends CobolFlowNode {
     }
 
     @Override
+    public void buildTwin() {
+        astChildren.forEach(FlowNode::buildTwin);
+    }
+
+    @Override
     public void buildInternalFlow() {
-        System.out.println("Building internal flow for " + name());
+        logger.fine("Building internal flow for " + name());
         List<? extends ParseTree> children = getChildren();
         if (children == null || children.isEmpty()) return;
-        System.out.println("Looking at " + name());
         internalTreeRoot = nodeService.node(children.getFirst(), this, staticFrameContext.add(this));
         FlowNode current = internalTreeRoot;
         astChildren.add(current);
@@ -41,6 +49,11 @@ public class CompositeCobolFlowNode extends CobolFlowNode {
             astChildren.add(successor);
         }
         internalTreeRoot.buildFlow();
+    }
+
+    @Override
+    public void resolve(SmojolSymbolTable symbolTable, CobolDataStructure dataStructures) {
+        astChildren.forEach(child -> child.resolve(symbolTable, dataStructures));
     }
 
     private boolean isNullDialectNode(FlowNode node) {
@@ -77,12 +90,22 @@ public class CompositeCobolFlowNode extends CobolFlowNode {
     }
 
     @Override
+    public void buildControlFlow() {
+        astChildren.forEach(FlowNode::buildControlFlow);
+    }
+
+//    @Override
+//    public void resolve(SmojolSymbolTable symbolTable, CobolDataStructure dataStructures) {
+//        astChildren.forEach(child -> child.resolve(symbolTable, dataStructures));
+//    }
+//
+    @Override
     public FlowNode next(FlowNodeCondition nodeCondition, FlowNode startingNode, boolean isComplete) {
-        System.out.println("Moved up to " + executionContext.getClass() + executionContext.getText());
+        logger.finer("Moved up to " + executionContext.getClass() + executionContext.getText());
         CobolEntityNavigator navigator = nodeService.getNavigator();
 //        boolean shouldSearch = navigator.findByCondition(executionContext, n -> n == startingNode.getExecutionContext()) == null;
         if (!isComplete) {
-            System.out.println("ITR is " + internalTreeRoot.getClass() + " " + internalTreeRoot);
+            logger.finer("ITR is " + internalTreeRoot.getClass() + " " + internalTreeRoot);
             FlowNode searchResult = internalTreeRoot.next(nodeCondition, startingNode, false);
             if (searchResult != null) return searchResult;
         }
@@ -108,6 +131,11 @@ public class CompositeCobolFlowNode extends CobolFlowNode {
         return flowControl.apply(() -> continueOrAbort(signal, interpreter, nodeService), signal);
     }
 
+    @Override
+    public void addChild(FlowNode child) {
+        astChildren.add(child);
+    }
+
     public CobolVmSignal acceptInterpreterForCompositeExecution(CobolInterpreter interpreter, FlowControl flowControl) {
         return executeInternalRoot(interpreter, nodeService);
     }
@@ -130,7 +158,7 @@ public class CompositeCobolFlowNode extends CobolFlowNode {
     }
 
     @Override
-    public List<FlowNodeCategory> categories() {
-        return ImmutableList.of(FlowNodeCategory.CODE_BLOCK);
+    public List<SemanticCategory> categories() {
+        return ImmutableList.of(SemanticCategory.CODE_BLOCK);
     }
 }

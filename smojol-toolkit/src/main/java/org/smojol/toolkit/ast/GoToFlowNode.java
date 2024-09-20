@@ -1,22 +1,29 @@
 package org.smojol.toolkit.ast;
 
 import com.google.common.collect.ImmutableList;
+import lombok.Getter;
 import org.antlr.v4.runtime.tree.ParseTree;
 import org.eclipse.lsp.cobol.core.CobolParser;
 import org.smojol.common.ast.*;
+import org.smojol.common.vm.expression.CobolExpression;
+import org.smojol.common.vm.expression.CobolExpressionBuilder;
 import org.smojol.common.vm.interpreter.CobolInterpreter;
 import org.smojol.common.vm.interpreter.CobolVmSignal;
 import org.smojol.common.vm.interpreter.FlowControl;
 import org.smojol.common.vm.stack.StackFrames;
 
 import java.util.List;
+import java.util.logging.Logger;
 import java.util.stream.Collectors;
 
 import static guru.nidi.graphviz.model.Factory.mutNode;
 
-public class GoToFlowNode extends CobolFlowNode {
+@Getter
+public class GoToFlowNode extends CobolFlowNode implements InternalControlFlowNode {
+    private static final Logger logger = Logger.getLogger(GoToFlowNode.class.getName());
 
     private List<FlowNode> destinationNodes;
+    private CobolExpression dependingFactor;
 
     public GoToFlowNode(ParseTree parseTree, FlowNode scope, FlowNodeService nodeService, StackFrames stackFrames) {
         super(parseTree, scope, nodeService, stackFrames);
@@ -36,8 +43,14 @@ public class GoToFlowNode extends CobolFlowNode {
     public void buildControlFlow() {
         CobolParser.GoToStatementContext goToStatement = new SyntaxIdentity<CobolParser.GoToStatementContext>(getExecutionContext()).get();
         List<CobolParser.ProcedureNameContext> procedureNames = goToStatement.procedureName();
-        System.out.println("Found a GO TO, routing to " + procedureNames);
+        logger.finer("Found a GO TO, routing to " + procedureNames);
         destinationNodes = procedureNames.stream().map(p -> nodeService.sectionOrParaWithName(p.paragraphName().getText())).collect(Collectors.toList());
+        if (dependsUponFactor()) dependingFactor = new CobolExpressionBuilder().identifier(goToStatement.generalIdentifier());
+    }
+
+    public boolean dependsUponFactor() {
+        CobolParser.GoToStatementContext goToStatement = new SyntaxIdentity<CobolParser.GoToStatementContext>(getExecutionContext()).get();
+        return goToStatement.DEPENDING() != null;
     }
 
     @Override
@@ -53,11 +66,16 @@ public class GoToFlowNode extends CobolFlowNode {
 
     @Override
     public FlowNodeType type() {
-        return FlowNodeType.CONTROL_FLOW;
+        return FlowNodeType.GOTO;
     }
 
     @Override
-    public List<FlowNodeCategory> categories() {
-        return ImmutableList.of(FlowNodeCategory.CONTROL_FLOW);
+    public List<SemanticCategory> categories() {
+        return ImmutableList.of(SemanticCategory.CONTROL_FLOW);
+    }
+
+    @Override
+    public List<FlowNode> callTargets() {
+        return destinationNodes;
     }
 }

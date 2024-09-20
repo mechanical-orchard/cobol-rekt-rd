@@ -1,10 +1,15 @@
 package org.smojol.toolkit.ast;
 
 import com.google.common.collect.ImmutableList;
+import lombok.Getter;
 import org.antlr.v4.runtime.tree.ParseTree;
 import org.eclipse.lsp.cobol.core.CobolParser;
 import org.smojol.common.ast.*;
+import org.smojol.common.pseudocode.SmojolSymbolTable;
+import org.smojol.common.vm.expression.FlowIterationBuilder;
+import org.smojol.common.vm.expression.FlowIteration;
 import org.smojol.common.vm.stack.StackFrames;
+import org.smojol.common.vm.structure.CobolDataStructure;
 
 import java.util.List;
 
@@ -13,6 +18,7 @@ import static guru.nidi.graphviz.model.Factory.mutNode;
 
 public class PerformInlineFlowNode extends CompositeCobolFlowNode {
     private FlowNode condition;
+    @Getter private List<FlowIteration> nestedLoops;
 
     public PerformInlineFlowNode(ParseTree parseTree, FlowNode scope, FlowNodeService nodeService, StackFrames stackFrames) {
         super(parseTree, scope, nodeService, stackFrames);
@@ -70,7 +76,14 @@ public class PerformInlineFlowNode extends CompositeCobolFlowNode {
     }
 
     @Override
-    public List<FlowNodeCategory> categories() {
-        return ImmutableList.of(FlowNodeCategory.LOOP);
+    public List<SemanticCategory> categories() {
+        return ImmutableList.of(SemanticCategory.LOOP);
+    }
+
+    @Override
+    public void resolve(SmojolSymbolTable symbolTable, CobolDataStructure dataStructures) {
+        CobolParser.PerformStatementContext performStatement = new SyntaxIdentity<CobolParser.PerformStatementContext>(getExecutionContext()).get();
+        CobolParser.PerformInlineStatementContext performInlineStatementContext = performStatement.performInlineStatement();
+        nestedLoops = FlowIterationBuilder.build(performInlineStatementContext.performType(), dataStructures);
     }
 }

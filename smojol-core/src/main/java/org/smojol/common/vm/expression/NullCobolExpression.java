@@ -3,14 +3,18 @@ package org.smojol.common.vm.expression;
 import com.google.common.collect.ImmutableList;
 import org.smojol.common.flowchart.ConsoleColors;
 import org.smojol.common.vm.structure.CobolDataStructure;
+import org.smojol.common.vm.type.AbstractCobolType;
 import org.smojol.common.vm.type.TypedRecord;
 
+import java.util.logging.Logger;
+
 public class NullCobolExpression extends CobolExpression {
+    private static final java.util.logging.Logger LOGGER = Logger.getLogger(NullCobolExpression.class.getName());
     private final String EMPTY_STRING = "";
     private final String referenceID;
 
     public NullCobolExpression(String referenceID) {
-        super(ImmutableList.of());
+        super(ImmutableList.of(), "NULL");
         this.referenceID = referenceID;
     }
 
@@ -42,6 +46,16 @@ public class NullCobolExpression extends CobolExpression {
     @Override
     public CobolExpression evaluate(CobolDataStructure data) {
         return withWarning2(this, "WARNING: Evaluating null cobol expression", referenceID);
+    }
+
+    @Override
+    public String description() {
+        return operationMnemonic + "()";
+    }
+
+    @Override
+    public AbstractCobolType expressionType(CobolDataStructure dataStructures) {
+        return AbstractCobolType.NULL;
     }
 
     @Override
@@ -80,17 +94,17 @@ public class NullCobolExpression extends CobolExpression {
     }
 
     @Override
-    protected CobolExpression subtract(CobolExpression other, CobolDataStructure dataStructures) {
+    public CobolExpression subtract(CobolExpression other, CobolDataStructure dataStructures) {
         return withWarning2(this, "WARNING: Subtract Operation requested on null cobol expression", referenceID);
     }
 
     @Override
-    protected CobolExpression divide(CobolExpression other, CobolDataStructure dataStructures) {
+    public CobolExpression divide(CobolExpression other, CobolDataStructure dataStructures) {
         return withWarning2(this, "WARNING: Divide Operation requested on null cobol expression", referenceID);
     }
 
     @Override
-    protected CobolExpression multiply(CobolExpression other, CobolDataStructure dataStructures) {
+    public CobolExpression multiply(CobolExpression other, CobolDataStructure dataStructures) {
         return withWarning2(this, "WARNING: Multiply Operation requested on null cobol expression", referenceID);
     }
 
@@ -110,7 +124,7 @@ public class NullCobolExpression extends CobolExpression {
     }
 
     private static <T> T withWarning2(T v, String message, String referenceID) {
-        System.out.println(ConsoleColors.red(message + ". Original Reference ID: " + referenceID));
+        LOGGER.fine(ConsoleColors.red(message + ". Original Reference ID: " + referenceID));
         return v;
     }
 }

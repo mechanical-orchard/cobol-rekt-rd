@@ -1,24 +1,34 @@
 package org.smojol.toolkit.ast;
 
 import com.google.common.collect.ImmutableList;
+import lombok.Getter;
 import org.antlr.v4.runtime.tree.ParseTree;
 import org.eclipse.lsp.cobol.core.CobolParser;
 import org.smojol.common.ast.*;
+import org.smojol.common.pseudocode.SmojolSymbolTable;
+import org.smojol.common.vm.expression.FlowIterationBuilder;
+import org.smojol.common.vm.expression.FlowIteration;
 import org.smojol.common.vm.interpreter.CobolInterpreter;
 import org.smojol.common.vm.interpreter.CobolVmSignal;
 import org.smojol.common.vm.interpreter.FlowControl;
 import org.smojol.common.vm.stack.StackFrames;
+import org.smojol.common.vm.structure.CobolDataStructure;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.logging.Logger;
 
-import static guru.nidi.graphviz.model.Factory.mutNode;
-
-public class PerformProcedureFlowNode extends CobolFlowNode {
-
+public class PerformProcedureFlowNode extends CobolFlowNode implements InternalControlFlowNode {
+    private static final Logger logger = Logger.getLogger(PerformProcedureFlowNode.class.getName());
     private FlowNode inlineStatementContext;
-    private List<FlowNode> procedures = new ArrayList<>();
+    private final List<FlowNode> procedures = new ArrayList<>();
     private FlowNode condition;
+    @Getter
+    private List<FlowIteration> nestedLoops;
+    @Getter
+    private FlowNode startNode;
+    @Getter
+    private FlowNode endNode;
 
     public PerformProcedureFlowNode(ParseTree parseTree, FlowNode scope, FlowNodeService nodeService, StackFrames stackFrames) {
         super(parseTree, scope, nodeService, stackFrames);
@@ -55,13 +65,14 @@ public class PerformProcedureFlowNode extends CobolFlowNode {
         CobolParser.PerformProcedureStatementContext performProcedureStatementContext = performStatement.performProcedureStatement();
         CobolParser.ProcedureNameContext procedureNameContext = performProcedureStatementContext.procedureName();
         String procedureName = procedureNameContext.getText();
-        System.out.println("Found a PERFORM, routing to " + procedureName);
-        FlowNode startNode = nodeService.sectionOrParaWithName(procedureName);
+        logger.finer("Found a PERFORM, routing to " + procedureName);
+        startNode = nodeService.sectionOrParaWithName(procedureName);
         if (performStatement.performProcedureStatement().through() == null) {
             procedures.add(startNode);
+            endNode = startNode;
         } else {
             CobolParser.ProcedureNameContext endProcedureNameContext = performStatement.performProcedureStatement().through().procedureName();
-            FlowNode endNode = nodeService.sectionOrParaWithName(endProcedureNameContext.getText());
+            endNode = nodeService.sectionOrParaWithName(endProcedureNameContext.getText());
             procedures.addAll(allProcedures(startNode, endNode));
         }
     }
@@ -112,7 +123,26 @@ public class PerformProcedureFlowNode extends CobolFlowNode {
     }
 
     @Override
-    public List<FlowNodeCategory> categories() {
-        return ImmutableList.of(FlowNodeCategory.CONTROL_FLOW);
+    public List<SemanticCategory> categories() {
+        return ImmutableList.of(SemanticCategory.CONTROL_FLOW);
+    }
+
+    @Override
+    public List<FlowNode> astChildren() {
+        return inlineStatementContext != null ? ImmutableList.of(inlineStatementContext) : ImmutableList.of();
+    }
+
+    @Override
+    public List<FlowNode> callTargets() {
+        return procedures;
+    }
+
+    @Override
+    public void resolve(SmojolSymbolTable symbolTable, CobolDataStructure dataStructures) {
+        CobolParser.PerformStatementContext performStatement = new SyntaxIdentity<CobolParser.PerformStatementContext>(getExecutionContext()).get();
+        CobolParser.PerformProcedureStatementContext performProcedureStatementContext = performStatement.performProcedureStatement();
+        nestedLoops = performProcedureStatementContext.performType() != null
+                ? FlowIterationBuilder.build(performProcedureStatementContext.performType(), dataStructures)
+                : ImmutableList.of();
     }
 }

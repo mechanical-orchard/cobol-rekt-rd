@@ -1,10 +1,50 @@
-# Cobol REKT (Cobol Reverse Engineering KiT)
+# Cobol-REKT (Cobol Reverse Engineering KiT)
 
 [![Maven Package](https://github.com/avishek-sen-gupta/cobol-rekt/actions/workflows/maven-publish.yml/badge.svg)](https://github.com/avishek-sen-gupta/cobol-rekt/actions/workflows/maven-publish.yml)
 
-This is an evolving toolkit of capabilities helpful for reverse engineering legacy Cobol code. As of now, the following capabilities are available:
+You can see the current backlog [here](https://github.com/users/avishek-sen-gupta/projects/1).
+
+## Contents
+
+- [Introduction](#introduction)
+- [Major Dependencies](#major-dependencies)
+- [Reverse Engineering Use Cases](#reverse-engineering-use-cases)
+- [Planned Capabilities](#planned-capabilities-andor-experiments)
+- [Flowchart Generation](#flowchart-generation)
+- [Parse Tree Generation](#parse-tree-generation)
+- [Control Flow Generation](#control-flow-generation)
+- [Neo4J Integration](#neo4j-integration)
+- [OpenAI integration](#openai-integration)
+- [Data Dependency Generation](#data-dependency-graph)
+- [Comments integration](#comments-integration)
+- [SMOJOL (SMol Java-powered CobOL) Interpreter](#smojol-smol-java-powered-cobol-interpreter)
+- [Analysis through JGraphT](#analysis-through-jgrapht)
+- [Useful Analyses through plain Python](#useful-analyses-through-plain-python)
+  - [Analyse static value assignments to variables](#1-analyse-static-value-assignments-to-variables)
+- [Analysis through NetworkX](#analysis-through-networkx)
+    - [Code Similarity](#code-similarity)
+    - [Code Pattern Recognition](#code-pattern-recognition)
+- [Building Glossaries](#building-glossaries-alpha)
+- [Building Capability Maps](#building-capability-maps-alpha)
+- [Control Flow Analysis](#control-flow-analysis)
+  - TranspilerNode format
+  - [Reducibility Testing](#testing-reducibility-experimental-feature)
+  - [Basic Block Analysis](#basic-blocks-experimental-feature)
+- [How to Build](#how-to-build)
+- [Running against AWS Card Demo](#running-against-aws-card-demo)
+- [Developer Guide](#developer-guide)
+  - [CLI Usage](#cli-usage)
+  - [Programmatic Usage](#programmatic-usage)
+- [Logging Settings](#logging-settings)
+- [A Note on Copyright](#a-note-on-copyright)
+- [Caveats](#caveats)
+- [Known Issues](#known-issues)
+
+## Introduction
+Cobol-REKT is an evolving toolkit of capabilities helpful for reverse engineering legacy Cobol code. As of now, the following capabilities are available:
 
 - Program / section / paragraph level flowchart generation based on AST (SVG or PNG)
+- Section-wise generation of Mermaid flowcharts
 - Parse Tree generation (with export to JSON)
 - Control Flow Tree generation (with export to JSON)
 - Allows embedding code comments as comment nodes in the graph
@@ -15,11 +55,15 @@ This is an evolving toolkit of capabilities helpful for reverse engineering lega
 - Perform actions on graphs using depth first traversals in Neo4J (AST nodes or Data Structure nodes). Use cases can include aggregating lower-level summaries (using an LLM) into more abstract descriptions of functionality, a la GraphRAG.
 - Exposes a unified model (AST, CFG, Data Structures with appropriate interconnections) which can be analysed through [JGraphT](https://jgrapht.org/), together with export to GraphML format and JSON.
 - Support for namespaces to allow unique addressing of (possibly same) graphs
-- **ALPHA:** Support for building Glossary of Variables from data structures using LLMs
-- **ALPHA:** Support for extracting Capability Graph from paragraphs of a program using LLMs
-- **ALPHA:** Injecting inter-program dependencies into Neo4J (with export to JSON)
-- **ALPHA:** Paragraph similarity map (Java / Python)
-- **ALPHA:** Code Pattern Detection (Neo4J / NetworkX)
+- Analysing static value assignments to variables
+- Support for building Glossary of Variables from data structures using LLMs
+- Support for extracting Capability Graph from paragraphs of a program using LLMs
+- Injecting inter-program dependencies into Neo4J (with export to JSON)
+- Paragraph similarity map (Java / Python)
+- Code Pattern Detection (Neo4J / NetworkX)
+- **(WIP)** Exposing Basic Blocks which are a useful first step in raw transpilation
+- **(WIP)** Analysing whether the control flow graph is reducible or not: a proxy for how well-structured the program is, and how amenable it is to direct transpilation to structured program languages (without arbitrary GOTOs)
+
 
 Cobol-REKT is more of a library of useful things intended to be embedded in more formal reverse engineering workflows/pipelines, rather than being a standalone tool (though you can certainly use it as such). Many of the higher-level wrappers are merely sensible defaults; you are encouraged to modify them to suit your needs.
 
@@ -39,6 +83,7 @@ The toolkit consists of Java components, most of which are around parsing, inges
 - An implementation of the gSpan algorithm for Frequent Subgraph Mining is adapted from [https://github.com/betterenvi/gSpan].
 - [Neo4J](https://neo4j.com/) is required for using tasks involving Neo4J. The APOC and GDS plugins will need to be installed. All the tasks have also been tested using Neo4J Desktop.
 - A subscription to OpenAI's GPT-4o (or your choice of deployment) will be needed for capabilities which use LLMs. The tasks have been tested using Azure's OpenAI offering.
+- RuntimeTypeAdapterFactory from Gson for some serialisation use-cases.
 
 ## Reverse Engineering Use Cases
 
@@ -54,18 +99,12 @@ Some reverse engineering use cases are listed below. Descriptions of the capabil
 - Try out new rules?
 - Identify different flows in the report - use cases for forward engineering
 
-## Work in Progress
-
-- Graph Edit distance between paragraphs through NetworkX
-- Clone Detection
-- Common Pattern Detection with Configurable Code Patterns
-- CICS support
-
-## Planned Capabilities
+## Planned Capabilities and/or Experiments
 
 - Integrating Domain Knowledge
-- IDMS Transaction Lists and Participants (```BIND RUN-UNIT```, ```BIND RECORD```, ...)
 - IDMS Identify UI interactions and participants (```INSPECT```, ```MAP IN```, ```INQUIRE MAP```, Panel Definition parsing)
+- Reducibility analysis for Control Flow Graphs
+- Quad Generation (WIP): This is a WIP experiment to generate Instruction Quads (a sort of language-independent Intermediate Representation described in the Dragon Book (Compilers: Principles, Techniques, and Tools by Aho, Sethi, Ullman).
 
 ## Flowchart Generation
 
@@ -81,6 +120,10 @@ This capability allows the engineer to transform Cobol source (or part of it) in
 
 The dotted lines indicate things that are inside a node. So, in the above example, after the first beige "Processing" block, there is a node which leads to an IF statement through the dotted line. What happens inside the IF statement can be understood by "stepping into" this dotted line. The normal flow after the IF statement finishes can be continued by returning to the node where the dotted line originates.
 
+You can also generate Mermaid flowcharts for embedding in other Markdown files. You can use the ```EXPORT_MERMAID``` task for this. Currently, this supports only section-wise generation of Mermaid charts.
+
+![Mermaid Flowcharts](documentation/mermaid-sectionwise.png)
+
 ## Parse Tree Generation
 
 This allows the engineer to produce the parse tree of Cobol source. This is suitable for use in further static analysis, transformation (into a control flow tree, for example), and inputs to other systems (informed chunking to an LLM, into a graph database for further exploration, etc.). See [Reverse Engineering Use Cases](#reverse-engineering-use-cases) for more examples.
@@ -92,7 +135,7 @@ Most of the capabilities are already present in the Che4z library. Some new gram
 
 This capability can be used by specifiying the ```WRITE_RAW_AST``` task.
 
-## Control Flow Tree Generation
+## Control Flow Generation
 
 This capability allows the engineer to produce a control flow tree for the Cobol source. This can be used for straight-up visualisation (the flowchart capability actually uses the control flow tree behind the scenes), or more dynamic analysis through an interpreter. See [SMOJOL (SMol Java-powered CobOL Interpreter)](#smojol-smol-java-powered-cobol-interpreter) for a description of how this can help.
 
@@ -146,14 +189,14 @@ The interpreter can run in two modes:
 - **No-Operation mode:** In this mode, none of the processing statements like MOVE, ADD, etc. are actually executed, but control flow is still respected. This mode is useful in many contexts where the actual change in variables isn't as important as knowing / logging the action that is taking place. This is a good default starting point for ingesting runtime execution paths into a graph. Decisions which affect control flow are evaluated based on the kind of evaluation strategy specified, so the full expression evaluation strategy will not be effective. More specific strategies can be written, or interactive resolution through the console can be used.
 - **Full evaluation mode (Experimental):** In this mode, expressions are actually evaluated to their final results, and is the closest to actual execution of the program including storing variable state. Note that this is a work in progress, since every nook and cranny of the Cobol standard is not supported yet.
 
-## Current Capabilities of the Interpreter
+### Current Capabilities of the Interpreter
 
 - Support for most control constructs: IF/THEN, NEXT SENTENCE, GO TO, PERFORM, SEARCH...WHEN, IDMS ON
 - Support for expression evaluation in COMPUTE, MOVE, ADD, SUBTRACT, MULTIPLY, DIVIDE
 - Support for interactive resolution of conditions
 - Most common class comparisons supported
 - Support for abbreviated relation condition forms (IF A > 10 OR 20 AND 30...)
-- Functioning type system (supports zoned decimals and alphanumerics) with a large subset of z/OS behaviour compatibility for scenarios undefined in the Cobol standard
+- Functioning type system (supports zoned decimals, COMP-3 / Packed Decimal and alphanumerics) with a large subset of z/OS behaviour compatibility for scenarios undefined in the Cobol standard
 - Support for fixed-size tables and single subscripting
 - Support for elementary, composite, and recursive REDEFINES (REDEFINES of REDEFINES)
 - Multiple subscript access
@@ -166,11 +209,10 @@ The interpreter can run in two modes:
 - Support for different strategies to deal with unresolved record references (ignore / throw exception)
 - Support for listeners to extract specific information about the current state of the program (all the Neo4J integrations are via these listeners)
 
-## Planned Capabilities
+### Planned Capabilities for the interpreter
 
 - Support symbolic execution
 - Support EVALUATE statements
-- Handle GIVING phrases in ADD/SUBTRACT/MULTIPLY/DIVIDE
 - PERFORM VARYING
 - PERFORM INLINE...VARYING
 - Initialise values of variables from DATA DIVISION
@@ -183,6 +225,7 @@ The interpreter can run in two modes:
 
 ### Example interpreter session demonstrating breakpoints, stack traces, and record inspection
 ![Interpreter Session](documentation/smojol-interpreter-session.png)
+
 
 ### Integration with Neo4J
 
@@ -214,6 +257,24 @@ The file will be in the ```import``` directory inside the directory where the cu
 In addition to writing to Neo4J and leveraging its data science capabilities to analyse the graph(s), the library also embeds [JGraphT](https://jgrapht.org/), a powerful library of graph algorithms. The ```JGraphTBuilder``` class converts the unified model (AST, CFG, Data Structures) into a DirectedPseudograph (because there can be both loops and parallel edges between two nodes), for consequent analysis through the JGraphT API.
 
 Custom analyses are a work in progress. The ```COMPARE_CODE``` task, for example, uses the JGraphT library.
+
+## Useful Analyses through plain Python
+
+### 1) Analyse static value assignments to variables
+
+This is useful for when you are looking for the range of values which are assigned to a record in a program. You will need to execute the ```WRITE_RAW_AST``` task first, like so:
+
+```
+java -jar smojol-cli/target/smojol-cli.jar run test-exp.cbl hello.cbl --commands="WRITE_RAW_AST" --srcDir /Users/asgupta/code/smojol/smojol-test-code --copyBooksDir /Users/asgupta/code/smojol/smojol-test-code --dialectJarPath ./che-che4z-lsp-for-cobol-integration/server/dialect-idms/target/dialect-idms.jar --reportDir out/report --generation=PROGRAM
+```
+
+Once you have the AST file, you can run the analysis like so (making sure first that you are in the ```smojol_python``` directory):
+
+```
+python -m src.analysis.variable_static_values /path/to/ast/json --output=/path/to/output
+```
+
+If you omit the ```--output``` flag, it will simply print out the results.
 
 ## Analysis through NetworkX
 
@@ -267,7 +328,7 @@ python -m src.llm.glossary_builder.main /path/to/report/dir/program-data.json ou
 
 This will generate the glossary in ```out/glossary.md```. Integrating other out-of-band data sources is a work in progress.
 
-## Build Capability Maps **(ALPHA)**
+## Building Capability Maps **(ALPHA)**
 
 The toolkit supports extracting a capability map from the paragraphs of a source. For this, you need to generate both the AST in Neo4J, as well as the data structures JSON, you can do this via:
 
@@ -296,6 +357,31 @@ This will take a little time, depending upon the number of paragraphs and their 
 
 ![Capability Map Neo4J](documentation/capability-graph-neo4j.png)
 
+## Control Flow Analysis
+
+### Testing Reducibility (Experimental Feature)
+
+TODO...
+
+**NOTE**: This will be migrated soon to use the transpiler tree format.
+
+See [IntervalAnalysisMain.java](smojol-toolkit/src/main/java/org/smojol/toolkit/examples/IntervalAnalysisMain.java) for an example.
+
+### Basic Blocks (Experimental Feature)
+
+Basic Blocks are useful for analysing flow of the code without worrying about the specific computational details of the code. They are also useful (and the more pertinent use-case in our case) for rewriting / transpiling potential unstructured COBOL code (code with possibly arbitrary GOTOs) into a structured form / language (i.e., without GOTOs).
+
+**NOTE**: This will be migrated soon to use the transpiler tree format.
+
+~~Exposing basic blocks is done through the ```AnalyseControlFlowTask``` task. Note that this task does not actually output any artifacts, because it is intended for more internal analysis and transpilation (if I get to it at some point). It can be triggered through the ```CodeTaskRunner``` API just like many of the tasks. The return value on success is a pair.~~
+
+- ~~The first item is a list of ```BasicBlock``` objects. These objects in turn contain lists of ```PseudocodeInstruction```s. These instructions represent a linear translation of the code (like bytecode, but still very COBOL-specific) with extra sentinel instructions (ENTER/EXIT, etc.) inserted for more hook points.~~
+- ~~The second item is an object which contains two thing: a complete list of ```PseudocodeInstruction```s which the basic blocks are derived from, and all the edges between these instructions which represent possible control flows (sequential as well as jumps). If you choose to inject this graph into Neo4J, you will see that most of the graph is a linear chain of nodes, unlike the ```FlowNode``` representation which continues to maintain a syntactical hierarchy. ```PseudocodeInstruction``` objects do contain ```FlowNode``` objects internally for maintaining links with the original parse tree.~~
+
+~~A sequence of ```PseudocodeInstruction```s look something like below:~~
+
+![Pseudocode example](documentation/psuedocode-example.png)
+
 ## How to Build
 
 The toolkit uses JDK 21 features; so you'll need the appropriate JDK set up.
@@ -304,11 +390,11 @@ Run: ```mvn clean install```.
 
 The Checkstyle step is only applicable for the Eclipse Cobol parser project. You can skip the Checkstyle targets with:
 
-```mvn clean verify package -Dcheckstyle.skip=true```
+```mvn clean verify -Dcheckstyle.skip=true```
 
 You can skip the tests as well, using:
 
-```mvn clean verify package -Dmaven.test.skip=true```
+```mvn clean verify -Dmaven.test.skip=true```
 
 For generating flowcharts, you will need to set up Graphviz on your box; see the [site](https://graphviz.org/) for OS-specific installation instructions.
 
@@ -344,6 +430,7 @@ This command encapsulates almost all the tasks that you are likely to run. The d
 - ```EXPORT_TO_GRAPHML```: This exports the unified model to GraphML. Exposing more fine-grained options is in progress.
 - ```WRITE_RAW_AST```: This writes the original parse tree to JSON. Useful for downstream code to build their own AST representations.
 - ```DRAW_FLOWCHART```: This outputs flowcharts for the whole program or section-by-section of the program in PNG format.
+- ```EXPORT_MERMAID```: This outputs section-wise (one file per section) flowcharts for the program in the Mermaid format.
 - ```WRITE_CFG```: This outputs the control flow graph of the program as JSON.
 - ```WRITE_DATA_STRUCTURES```: This exports the data structure hierarchy of the program as JSON.
 - ```BUILD_PROGRAM_DEPENDENCIES``` (ALPHA): Builds direct program dependencies from ```CALL``` and IDMS ```TRANSFER CONTROL``` statements. Indirect dependencies are not traced. For tracing the full dependency graph, see the ```dependency``` task.
@@ -374,7 +461,7 @@ Implements various operations useful for reverse engineering Cobol code
                                DRAW_FLOWCHART, WRITE_FLOW_AST, WRITE_CFG,
                                ATTACH_COMMENTS, WRITE_DATA_STRUCTURES,
                                BUILD_PROGRAM_DEPENDENCIES, COMPARE_CODE,
-                               EXPORT_UNIFIED_TO_JSON)
+                               EXPORT_UNIFIED_TO_JSON, EXPORT_MERMAID)
       -cp, --copyBooksDir=<copyBookDirs>[,<copyBookDirs>...]
                              Copybook directories (repeatable)
   -d, --dialect=<dialect>    The COBOL dialect (COBOL, IDMS)
@@ -384,7 +471,7 @@ Implements various operations useful for reverse engineering Cobol code
                              Format of the flowchart output (PNG, SVG)
   -g, --generation=<flowchartGenerationStrategy>
                              The flowchart generation strategy. Valid values
-                               are SECTION, PROGRAM, PARAGRAPH, and NODRAW
+                               are SECTION, PROGRAM, and NODRAW
   -h, --help                 Show this help message and exit.
   -p, --permissiveSearch     Match filename using looser criteria
   -r, --reportDir=<reportRootDir>
@@ -462,6 +549,44 @@ Validates the candidate COBOL code
   -V, --version              Print version information and exit.
 ```
 
+#### Command: ```interpret```
+
+To run the interpreter, use the ```interpret``` command, like in the example below. Most of the options overlap with other commands.
+
+```
+java -jar smojol-cli/target/smojol-cli.jar interpret test-exp.cbl --srcDir /Users/asgupta/code/smojol/smojol-test-code --copyBooksDir "/Users/asgupta/code/smojol/smojol-test-code" --dialectJarPath /Users/asgupta/code/smojol/che-che4z-lsp-for-cobol-integration/server/dialect-idms/target/dialect-idms.jar --dialect COBOL --resolveTactic=CONSOLE
+```
+
+The ```resolveTactic``` parameters are as below:
+
+- ```YES```: Automatically resolved every condition to TRUE
+- ```NO```: Automatically resolved every condition to FALSE
+- ```CONSOLE```: Wait for user input on the command line to resolve the condition. ```Y``` implies TRUE, all other values resolve to FALSE.
+- ```EVAL```: Actually evaluate the condition based on the expressions in it. This is a Work in Progress.
+
+The help text for the ```interpret``` command is reproduced below.
+
+```
+Usage: app interpret [-hpV] [-d=<dialect>] [-dp=<dialectJarPath>]
+                     -s=<sourceDir> [-t=<resolutionTactic>] -cp=<copyBookDirs>[,
+                     <copyBookDirs>...] [-cp=<copyBookDirs>[,
+                     <copyBookDirs>...]]... <programName>
+Interprets the COBOL source
+      <programName>          The program to analyse
+      -cp, --copyBooksDir=<copyBookDirs>[,<copyBookDirs>...]
+                             Copybook directories (repeatable)
+  -d, --dialect=<dialect>    The COBOL dialect (COBOL, IDMS)
+      -dp, --dialectJarPath=<dialectJarPath>
+                             Path to dialect .JAR
+  -h, --help                 Show this help message and exit.
+  -p, --permissiveSearch     Match filename using looser criteria
+  -s, --srcDir=<sourceDir>   The Cobol source directory
+  -t, --resolveTactic=<resolutionTactic>
+                             The condition resolution strategy (YES, NO,
+                               CONSOLE, EVAL)
+  -V, --version              Print version information and exit.
+```
+
 ### Programmatic Usage
 
 **NOTE: The API is under active development, and may be subject to change.**
@@ -486,7 +611,7 @@ If you want more fine-grained control of the location of output artifacts, you c
 
 **NOTE:** For all analyses, specifying the ```OccursIgnoringFormat1DataStructureBuilder``` class is preferable to prevent extra noise that can be generated when creating arrays for structures using ```OCCURS``` clauses. However, the ```DefaultFormat1DataStructureBuilder``` should be specified when running the interpreter, because that will require the correct number of elements in array data structures.
 
-## How to Use
+Programmatic examples are provided in the following classes.
 
 - See ```FlowChartBuildMain.java``` for examples of how flowcharts are created.
 - See ```InterpreterMain.java``` for an example of how to run the interpreter on your code, as well as inject execution traces into Neo4J.
@@ -494,6 +619,10 @@ If you want more fine-grained control of the location of output artifacts, you c
 - See ```DependencyBuildMain.java``` for an example how inter-program dependencies can be injected into Neo4J.
 - See ```ValidateProgramMain.java``` for an example of how to run validation through code.
 - More detailed guides on programmatic use are on the way.
+
+## Logging Settings
+
+You can specify a custom logging settings file by adding ```-Djava.util.logging.config.file``` option. if not specified, a default ```logging.properties``` will be loaded, with ```INFO``` as the default level.
 
 ## A Note on Copyright
 
@@ -504,7 +633,6 @@ If you want more fine-grained control of the location of output artifacts, you c
 
 - This was built based on a time-boxed PoC, and thus isn't well-covered by tests yet. More are being added on an ongoing basis.
 - Cobol is a large language, and thus the interpreter's capabilities are not exhaustive. However, the hope is that the subset currently present is useful enough to get started with reverse engineering legacy code. Obviously, more capabilities are being added on an ongoing basis.
-- There are 4 superfluous directories at the top (engine, parser, dialect-daco, dialect-idms), which are a hack to get the Che4z Checkstyle targets to run because of a path configuration issue.
 - Visual indicators in picture clauses, like ```-```, ```,```, and ```Z``` are currently ignored.
 
 ## Known Issues
@@ -543,3 +671,15 @@ These are some other commands tried on larger graphs:
 ### This prints out all levels
 
 ```dot -Kdot -v5 -Gsize=200,200\! -Goverlap=scale -Tpng -Gnslimit=4 -Gnslimit1=4 -Gmaxiter=2000 -Gsplines=line dotfile.dot -oflowchart-level5.png```
+
+## References and Inspirations
+
+- Code Structure and Structural Programming
+  - [Structured Program Theorem](https://en.wikipedia.org/wiki/Structured_program_theorem)
+  - [Advanced Compiler Design and Implementation by Steven Muchnik](https://www.amazon.in/Advanced-Compiler-Design-Implementation-Muchnick/dp/1558603204)
+  - [Solving the structured control flow problem once and for all](https://medium.com/leaningtech/solving-the-structured-control-flow-problem-once-and-for-all-5123117b1ee2)
+  - [Compilers: Principles, Techniques, and Tools by Aho, Sethi, Ullman](https://www.amazon.in/Compilers-Principles-Techniques-Tools-Updated/dp/9357054111/)
+  - [Control Flow Analysis slides](http://www.cse.iitm.ac.in/~krishna/cs6013/lecture4.pdf)
+- COBOL References
+  - [Examples: numeric data and internal representation](https://www.ibm.com/docs/sk/cobol-zos/6.3?topic=data-examples-numeric-internal-representation)
+  - [Enterprise Cobol for Z/OS 6.4 - Language Reference](https://publibfp.dhe.ibm.com/epubs/pdf/igy6lr40.pdf)

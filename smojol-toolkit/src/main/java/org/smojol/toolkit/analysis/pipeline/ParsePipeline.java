@@ -12,23 +12,25 @@ import org.antlr.v4.runtime.tree.ParseTreeListener;
 import org.antlr.v4.runtime.tree.ParseTreeWalker;
 import org.eclipse.lsp.cobol.cli.di.CliModule;
 import org.eclipse.lsp.cobol.cli.modules.CliClientProvider;
+import org.eclipse.lsp.cobol.common.CleanerPreprocessor;
 import org.eclipse.lsp.cobol.common.ResultWithErrors;
 import org.eclipse.lsp.cobol.common.benchmark.BenchmarkService;
 import org.eclipse.lsp.cobol.common.benchmark.BenchmarkSession;
 import org.eclipse.lsp.cobol.common.benchmark.Measurement;
+import org.eclipse.lsp.cobol.common.dialects.CobolLanguageId;
 import org.eclipse.lsp.cobol.common.error.SyntaxError;
 import org.eclipse.lsp.cobol.common.mapping.ExtendedDocument;
 import org.eclipse.lsp.cobol.common.mapping.ExtendedText;
 import org.eclipse.lsp.cobol.common.message.MessageService;
+import org.eclipse.lsp.cobol.common.pipeline.Pipeline;
+import org.eclipse.lsp.cobol.common.pipeline.PipelineResult;
+import org.eclipse.lsp.cobol.common.pipeline.StageResult;
 import org.eclipse.lsp.cobol.core.engine.analysis.AnalysisContext;
 import org.eclipse.lsp.cobol.core.engine.dialects.DialectService;
 import org.eclipse.lsp.cobol.core.engine.errors.ErrorFinalizerService;
-import org.eclipse.lsp.cobol.core.engine.pipeline.Pipeline;
-import org.eclipse.lsp.cobol.core.engine.pipeline.PipelineResult;
-import org.eclipse.lsp.cobol.core.engine.pipeline.StageResult;
-import org.eclipse.lsp.cobol.core.engine.pipeline.stages.*;
-import org.eclipse.lsp.cobol.core.preprocessor.TextPreprocessor;
 import org.eclipse.lsp.cobol.core.preprocessor.delegates.GrammarPreprocessor;
+import org.eclipse.lsp.cobol.dialects.TrueDialectServiceImpl;
+import org.eclipse.lsp.cobol.dialects.ibm.*;
 import org.smojol.common.dependency.ComponentsBuilder;
 import org.smojol.common.flowchart.FlowchartBuilder;
 import org.smojol.common.idms.DialectIntegratorListener;
@@ -38,13 +40,14 @@ import org.smojol.common.dialect.LanguageDialect;
 import org.smojol.common.vm.structure.CobolDataStructure;
 import org.smojol.toolkit.analysis.error.ParseDiagnosticRuntimeError;
 import org.smojol.toolkit.analysis.pipeline.config.SourceConfig;
+import org.smojol.toolkit.analysis.validation.DataStructureValidation;
 
 import java.io.File;
 import java.io.IOException;
-import java.nio.file.Files;
 import java.util.Arrays;
 import java.util.List;
 import java.util.Optional;
+import java.util.logging.Logger;
 
 /**
  * The parse pipeline extracts out the functionality of the parse pipeline into an independent
@@ -52,6 +55,7 @@ import java.util.Optional;
  */
 @Slf4j
 public class ParsePipeline {
+    private static final Logger LOGGER = Logger.getLogger(ParsePipeline.class.getName());
     private final File src;
     private final List<File> cpyPaths;
     private final String[] cpyExt;
@@ -73,14 +77,16 @@ public class ParsePipeline {
         this.dialectJarPath = sourceConfig.dialectJarPath();
     }
 
+    public CobolEntityNavigator parse() throws IOException {
+        return parse(DataStructureValidation.BUILD);
+    }
     /**
      * Parses and returns a navigator to navigate the tree with
      * @return CobolEntityNavigator
      * @throws IOException
      */
-    public CobolEntityNavigator parse() throws IOException {
+    public CobolEntityNavigator parse(DataStructureValidation dataStructureValidation) throws IOException {
         Injector diCtx = Guice.createInjector(new CliModule());
-        Pipeline pipeline = setupPipeline(diCtx);
 
         CliClientProvider cliClientProvider = diCtx.getInstance(CliClientProvider.class);
         if (cpyPaths != null) {
@@ -88,8 +94,8 @@ public class ParsePipeline {
         }
         cliClientProvider.setCpyExt(Arrays.asList(cpyExt));
 
-        // Cleaning up
-        TextPreprocessor preprocessor = diCtx.getInstance(TextPreprocessor.class);
+        CleanerPreprocessor preprocessor = diCtx.getInstance(TrueDialectServiceImpl.class).getPreprocessor(CobolLanguageId.COBOL);
+        Pipeline pipeline = setupPipeline(diCtx, preprocessor);
         BenchmarkService benchmarkService = diCtx.getInstance(BenchmarkService.class);
         ErrorFinalizerService errorFinalizerService = diCtx.getInstance(ErrorFinalizerService.class);
         if (src == null) {
@@ -98,14 +104,15 @@ public class ParsePipeline {
         }
 
         String documentUri = src.toURI().toString();
-        String text = new String(Files.readAllBytes(src.toPath()));
+//        String text = new String(Files.readAllBytes(src.toPath()));
+        String text = new String(ops.getResourceOperations().readAllBytes(src.toPath()));
 
         ResultWithErrors<ExtendedText> resultWithErrors = preprocessor.cleanUpCode(documentUri, text);
         AnalysisContext ctx =
                 new AnalysisContext(
                         new ExtendedDocument(resultWithErrors.getResult(), text),
                         dialect.analysisConfig(dialectJarPath),
-                        benchmarkService.startSession());
+                        benchmarkService.startSession(), src.toURI().toString(), text, CobolLanguageId.COBOL);
         ctx.getAccumulatedErrors().addAll(resultWithErrors.getErrors());
         PipelineResult pipelineResult = pipeline.run(ctx);
         Gson gson = new GsonBuilder().setPrettyPrinting().addSerializationExclusionStrategy(new ExclusionStrategy() {
@@ -129,7 +136,7 @@ public class ParsePipeline {
         errorFinalizerService.processLateErrors(ctx, ctx.getCopybooksRepository());
 
         if (!ctx.getAccumulatedErrors().isEmpty()) {
-            ctx.getAccumulatedErrors().forEach(System.out::println);
+            ctx.getAccumulatedErrors().forEach(e -> LOGGER.info(e.toString()));
             throw new ParseDiagnosticRuntimeError("There were parsing errors!", ctx.getAccumulatedErrors());
         }
 
@@ -139,14 +146,14 @@ public class ParsePipeline {
         dialect.verifyNoNullDialectStatements(tree, navigatorBuilder);
         DialectIntegratorListener dialectIntegrationListener = new DialectIntegratorListener();
         walker.walk(dialectIntegrationListener, tree);
-        System.out.println("[INFO] Restored " + dialectIntegrationListener.getRestores() + " nodes.");
-        System.out.println("Building tree...");
-        System.out.println("Built tree");
+        LOGGER.info("Restored " + dialectIntegrationListener.getRestores() + " nodes.");
+        LOGGER.info("Building tree...");
+        LOGGER.info("Built tree");
 
         // TODO: The navigator itself can probably determine these things,
         navigator = navigatorBuilder.navigator(tree);
-        dataStructures = ops.getDataStructureBuilder(navigator).build();
-        System.out.println(gson.toJson(timingResult));
+        dataStructures = dataStructureValidation.run(ops.getDataStructureBuilder(navigator));
+        LOGGER.info(gson.toJson(timingResult));
         return navigator;
     }
 
@@ -158,7 +165,7 @@ public class ParsePipeline {
         return ops.getFlowchartBuilderFactory().apply(navigator, dataStructures, ops.getIdProvider());
     }
 
-    private static Pipeline setupPipeline(Injector diCtx) {
+    private static Pipeline setupPipeline(Injector diCtx, CleanerPreprocessor preprocessor) {
         DialectService dialectService = diCtx.getInstance(DialectService.class);
         MessageService messageService = diCtx.getInstance(MessageService.class);
         GrammarPreprocessor grammarPreprocessor = diCtx.getInstance(GrammarPreprocessor.class);
@@ -167,8 +174,8 @@ public class ParsePipeline {
         Pipeline pipeline = new Pipeline();
         pipeline.add(new DialectCompilerDirectiveStage(dialectService));
         pipeline.add(new CompilerDirectivesStage(messageService));
-        pipeline.add(new DialectProcessingStage(dialectService));
-        pipeline.add(new PreprocessorStage(grammarPreprocessor));
+        pipeline.add(new DialectProcessingStage(dialectService, preprocessor));
+        pipeline.add(new PreprocessorStage(grammarPreprocessor, preprocessor));
         pipeline.add(new ImplicitDialectProcessingStage(dialectService));
         pipeline.add(new ParserStage(messageService, parseTreeListener));
         return pipeline;
