@@ -1,12 +1,15 @@
 package org.smojol.common.transpiler;
 
 import com.google.common.collect.ImmutableList;
+import lombok.Getter;
 import org.smojol.common.ast.SemanticCategory;
 import org.smojol.common.vm.expression.ConditionTestTime;
 
 import java.util.Collection;
+import java.util.List;
 import java.util.Objects;
 
+@Getter
 public final class TranspilerLoop extends TranspilerNode {
     private final TranspilerNode loopVariable;
     private final TranspilerNode initialValue;
@@ -19,7 +22,7 @@ public final class TranspilerLoop extends TranspilerNode {
     public TranspilerLoop(TranspilerNode loopVariable, TranspilerNode initialValue, TranspilerNode maxValue,
                           TranspilerNode terminateCondition, TranspilerNode loopUpdate,
                           ConditionTestTime conditionTestTime, TranspilerNode body) {
-        super(ImmutableList.of(SemanticCategory.ITERATION));
+        super(ImmutableList.of(body), ImmutableList.of(SemanticCategory.ITERATION));
         this.loopVariable = loopVariable;
         this.initialValue = initialValue;
         this.maxValue = maxValue;
@@ -27,10 +30,6 @@ public final class TranspilerLoop extends TranspilerNode {
         this.loopUpdate = loopUpdate;
         this.conditionTestTime = conditionTestTime;
         this.body = body;
-    }
-
-    public TranspilerNode body() {
-        return body;
     }
 
     @Override
@@ -54,6 +53,11 @@ public final class TranspilerLoop extends TranspilerNode {
 
     @Override
     public String description() {
+        return headerDescription() + "\n{\n"
+                + body.description() + "\n}\n";
+    }
+
+    public String headerDescription() {
         return "loop["
                 + "loopVariable=" + loopVariable.description() + ", "
                 + "initialValue=" + initialValue.description() + ", "
@@ -64,7 +68,12 @@ public final class TranspilerLoop extends TranspilerNode {
     }
 
     @Override
-    public Collection<TranspilerNode> astChildren() {
+    public List<TranspilerNode> astChildren() {
         return ImmutableList.of(body);
+    }
+
+    @Override
+    public Collection<TranspilerNode> internalElements() {
+        return ImmutableList.of(loopVariable, initialValue, maxValue, terminateCondition, loopUpdate, body);
     }
 }

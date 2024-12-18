@@ -64,6 +64,15 @@ public class Format1DataStructure extends CobolDataStructure {
         this.unresolvedReferenceStrategy = unresolvedReferenceStrategy;
     }
 
+    // Explicit ctor: only used for tables
+    public Format1DataStructure(CobolParser.DataDescriptionEntryFormat1Context dataDescription, CobolDataType elementType, UnresolvedReferenceStrategy unresolvedReferenceStrategy, SourceSection sourceSection) {
+        super(NamingScheme.IDENTITY.apply(dataDescription), Integer.parseInt(dataDescription.levelNumber().getText()), elementType, NodeText.originalText(dataDescription), sourceSection);
+        this.namingScheme = NamingScheme.IDENTITY;
+        this.dataDescription = dataDescription;
+        LOGGER.finer("Setting value for " + dataDescription.getText());
+        this.unresolvedReferenceStrategy = unresolvedReferenceStrategy;
+    }
+
     // Root constructor
     public Format1DataStructure(int levelNumber, UnresolvedReferenceStrategy unresolvedReferenceStrategy) {
         super(NamingScheme.ROOT.apply(null), levelNumber, CobolDataType.ROOT, "[ROOT]", SourceSection.ROOT);
@@ -71,6 +80,7 @@ public class Format1DataStructure extends CobolDataStructure {
         this.layout = new NullMemoryLayout();
         this.dataDescription = null;
         this.unresolvedReferenceStrategy = unresolvedReferenceStrategy;
+        this.isComposite = true;
     }
 
     // Copy constructor
@@ -193,13 +203,22 @@ public class Format1DataStructure extends CobolDataStructure {
     private Pair<DataTypeSpec, Integer> typeSpecForSingle() {
         if (dataType == CobolDataType.POINTER)
             return ImmutablePair.of(new ZonedDecimalDataTypeSpec(8, 0), 8);
-        else if (!isComposite)
-            return new DataLayoutBuilder().size(dataDescription.dataPictureClause().getFirst().pictureString().getFirst().getText());
-        else {
+        else if (!isComposite) {
+            LOGGER.info("Calculating type spec for single data structure: " + dataDescription.getText());
+            return spec(dataDescription);
+        } else {
             structures.forEach(CobolDataStructure::calculateMemoryRequirements);
             Integer groupSize = primaryDefinitions().stream().map(CobolDataStructure::size).reduce(0, Integer::sum);
             return ImmutablePair.of(new GroupDataTypeSpec(groupSize), groupSize);
         }
+    }
+
+    private Pair<DataTypeSpec, Integer> spec(CobolParser.DataDescriptionEntryFormat1Context dataDescription) {
+        if (!dataDescription.dataUsageClause().isEmpty()
+                && (dataDescription.dataUsageClause(0).usageFormat().COMP_1() != null
+                || dataDescription.dataUsageClause(0).usageFormat().COMPUTATIONAL_1() != null))
+            return ImmutablePair.of(new Comp1DataTypeSpec(), 4);
+        return new DataLayoutBuilder().size(dataDescription.dataPictureClause().getFirst().pictureString().getFirst().getText());
     }
 
     protected List<CobolDataStructure> primaryDefinitions() {

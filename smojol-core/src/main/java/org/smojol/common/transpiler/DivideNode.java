@@ -1,8 +1,12 @@
 package org.smojol.common.transpiler;
 
 import com.google.common.collect.ImmutableList;
+import lombok.Getter;
 import org.smojol.common.ast.SemanticCategory;
 
+import java.util.Collection;
+
+@Getter
 public class DivideNode extends TranspilerNode {
     private final TranspilerNode dividend;
     private final TranspilerNode divisor;
@@ -16,5 +20,10 @@ public class DivideNode extends TranspilerNode {
     @Override
     public String description() {
         return String.format("divide(%s, %s)", dividend.description(), divisor.description());
+    }
+
+    @Override
+    public Collection<TranspilerNode> internalElements() {
+        return ImmutableList.of(divisor, dividend);
     }
 }

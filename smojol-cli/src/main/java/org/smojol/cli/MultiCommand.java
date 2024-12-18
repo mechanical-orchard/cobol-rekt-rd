@@ -2,7 +2,7 @@ package org.smojol.cli;
 
 import org.smojol.common.logging.LoggingConfig;
 import org.smojol.common.resource.LocalFilesystemOperations;
-import org.smojol.toolkit.analysis.defined.CodeTaskRunner;
+import org.smojol.toolkit.analysis.task.analysis.CodeTaskRunner;
 import org.smojol.toolkit.analysis.validation.DataStructureValidation;
 import org.smojol.toolkit.task.AnalysisTaskResult;
 import org.smojol.common.validation.ProgramValidationErrors;
@@ -27,7 +27,7 @@ import java.util.Map;
 import java.util.concurrent.Callable;
 import java.util.logging.Logger;
 
-@Command(name = "run", mixinStandardHelpOptions = true, version = "graph 0.1",
+@Command(name = "run", mixinStandardHelpOptions = true, version = CliConstants.BANNER,
         description = "Implements various operations useful for reverse engineering Cobol code")
 public class MultiCommand implements Callable<Integer> {
     private static final Logger LOGGER = Logger.getLogger(MultiCommand.class.getName());
@@ -43,7 +43,7 @@ public class MultiCommand implements Callable<Integer> {
 
     @Option(names = {"-c", "--commands"},
             required = true,
-            description = "The commands to run (INJECT_INTO_NEO4J, EXPORT_TO_GRAPHML, WRITE_RAW_AST, DRAW_FLOWCHART, WRITE_FLOW_AST, WRITE_CFG, ATTACH_COMMENTS, WRITE_DATA_STRUCTURES, BUILD_PROGRAM_DEPENDENCIES, COMPARE_CODE, EXPORT_UNIFIED_TO_JSON, EXPORT_MERMAID)", split = " ")
+            description = "The commands to run (BUILD_BASE_ANALYSIS, FLOW_TO_NEO4J, FLOW_TO_GRAPHML, WRITE_RAW_AST, DRAW_FLOWCHART, WRITE_FLOW_AST, WRITE_CFG, ATTACH_COMMENTS, WRITE_DATA_STRUCTURES, BUILD_PROGRAM_DEPENDENCIES, COMPARE_CODE, EXPORT_UNIFIED_TO_JSON, EXPORT_MERMAID, SUMMARISE_THROUGH_LLM, WRITE_LLM_SUMMARY)", split = " ")
     private List<String> commands;
 
     @CommandLine.Parameters(index = "0..*",
@@ -68,7 +68,7 @@ public class MultiCommand implements Callable<Integer> {
 
     @Option(names = {"-g", "--generation"},
             defaultValue = "PROGRAM",
-            description = "The flowchart generation strategy. Valid values are SECTION, PROGRAM, and NODRAW")
+            description = "The flowchart generation strategy. Valid values are PARAGRAPH, SECTION, PROGRAM, and NODRAW")
     private String flowchartGenerationStrategy;
 
     @Option(names = {"-v", "--validate"},

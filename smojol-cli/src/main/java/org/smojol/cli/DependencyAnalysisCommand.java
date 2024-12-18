@@ -5,9 +5,9 @@ import com.mojo.woof.Neo4JDriverBuilder;
 import org.smojol.common.dialect.LanguageDialect;
 import org.smojol.common.logging.LoggingConfig;
 import org.smojol.common.resource.LocalFilesystemOperations;
-import org.smojol.toolkit.analysis.defined.AnalyseProgramDependenciesTask;
-import org.smojol.toolkit.analysis.defined.ExportProgramDependenciesTask;
-import org.smojol.toolkit.analysis.defined.InjectProgramDependenciesIntoNeo4JTask;
+import org.smojol.toolkit.analysis.task.analysis.AnalyseProgramDependenciesTask;
+import org.smojol.toolkit.analysis.task.analysis.ExportProgramDependenciesTask;
+import org.smojol.toolkit.analysis.task.analysis.InjectProgramDependenciesIntoNeo4JTask;
 import org.smojol.toolkit.task.AnalysisTaskResult;
 import org.smojol.toolkit.task.AnalysisTaskResultError;
 import org.smojol.toolkit.task.AnalysisTaskResultOK;
@@ -26,7 +26,7 @@ import java.util.List;
 import java.util.concurrent.Callable;
 import java.util.logging.Logger;
 
-@Command(name = "dependency", mixinStandardHelpOptions = true, version = "graph 0.1",
+@Command(name = "dependency", mixinStandardHelpOptions = true, version = "sourceGraph 0.1",
         description = "Implements various operations useful for reverse engineering Cobol code")
 public class DependencyAnalysisCommand implements Callable<Integer> {
     private static final Logger LOGGER = Logger.getLogger(DependencyAnalysisCommand.class.getName());

@@ -6,7 +6,7 @@ import org.smojol.common.ast.FlowNode;
 import org.smojol.common.ast.FlowNodeService;
 import org.smojol.common.ast.NullFlowNode;
 import org.smojol.common.ast.SyntaxIdentity;
-import org.smojol.common.idms.IdmsContainerNode;
+import org.smojol.common.idms.DialectContainerNode;
 import org.eclipse.lsp.cobol.core.CobolParser;
 import org.eclipse.lsp.cobol.dialects.idms.IdmsParser;
 import org.smojol.common.vm.stack.StackFrames;
@@ -21,7 +21,8 @@ public class CobolFlowNodeFactory {
             return new GoToFlowNode(parseTree, scope, nodeService, stackFrames);
         else if (SyntaxIdentity.isStatementOfType(parseTree, CobolParser.CallStatementContext.class))
             return new CallFlowNode(parseTree, scope, nodeService, stackFrames);
-        else if (SyntaxIdentity.isStatementOfType(parseTree, CobolParser.ExitStatementContext.class))
+        else if (SyntaxIdentity.isStatementOfType(parseTree, CobolParser.ExitStatementContext.class) ||
+        SyntaxIdentity.isStatementOfType(parseTree, CobolParser.GobackStatementContext.class))
             return new ExitFlowNode(parseTree, scope, nodeService, stackFrames);
         else if (SyntaxIdentity.isStatementOfType(parseTree, CobolParser.StopStatementContext.class))
             return new StopFlowNode(parseTree, scope, nodeService, stackFrames);
@@ -55,8 +56,11 @@ public class CobolFlowNodeFactory {
 
         else if (SyntaxIdentity.isOfType(parseTree, CobolParser.DialectStatementContext.class))
             return DialectFlowNodeFactory.flowNode(parseTree, scope, nodeService, stackFrames);
-        else if (SyntaxIdentity.isOfType(parseTree, CobolParser.ConditionalStatementCallContext.class))
-            return new ConditionalStatementFlowNode(parseTree, scope, nodeService, stackFrames);
+        else if (SyntaxIdentity.isOfType(parseTree, CobolParser.ConditionalStatementCallContext.class)) {
+            CobolParser.StatementContext innerStatement = ((CobolParser.ConditionalStatementCallContext) parseTree).statement();
+            return newNode(innerStatement, scope, nodeService, stackFrames);
+//            return new ConditionalStatementFlowNode(parseTree, scope, nodeService, stackFrames);
+        }
         // This needs to come last in all the statement classifications, or things will break
         else if (SyntaxIdentity.isOfType(parseTree, CobolParser.StatementContext.class))
             return new GenericStatementFlowNode(parseTree, scope, nodeService, stackFrames);
@@ -104,7 +108,8 @@ public class CobolFlowNodeFactory {
             return new GoToFlowNode(parseTree, scope, nodeService, stackFrames);
         else if (SyntaxIdentity.isOfType(parseTree, CobolParser.CallStatementContext.class))
             return new CallFlowNode(parseTree, scope, nodeService, stackFrames);
-        else if (SyntaxIdentity.isOfType(parseTree, CobolParser.ExitStatementContext.class))
+        else if (SyntaxIdentity.isOfType(parseTree, CobolParser.ExitStatementContext.class) ||
+                SyntaxIdentity.isOfType(parseTree, CobolParser.GobackStatementContext.class))
             return new ExitFlowNode(parseTree, scope, nodeService, stackFrames);
         else if (SyntaxIdentity.isOfType(parseTree, CobolParser.StopStatementContext.class))
             return new StopFlowNode(parseTree, scope, nodeService, stackFrames);
@@ -139,8 +144,11 @@ public class CobolFlowNodeFactory {
 
         else if (SyntaxIdentity.isOfType(parseTree, CobolParser.DialectStatementContext.class))
             return DialectFlowNodeFactory.flowNode(parseTree, scope, nodeService, stackFrames);
-        else if (SyntaxIdentity.isOfType(parseTree, CobolParser.ConditionalStatementCallContext.class))
-            return new ConditionalStatementFlowNode(parseTree, scope, nodeService, stackFrames);
+        else if (SyntaxIdentity.isOfType(parseTree, CobolParser.ConditionalStatementCallContext.class)) {
+            CobolParser.StatementContext innerStatement = ((CobolParser.ConditionalStatementCallContext) parseTree).statement();
+            return newNode(innerStatement, scope, nodeService, stackFrames);
+//            return new ConditionalStatementFlowNode(parseTree, scope, nodeService, stackFrames);
+        }
         // This needs to come last in all the statement classifications, or things will break
 
         else if (SyntaxIdentity.isOfType(parseTree, CobolParser.PerformTypeContext.class))
@@ -179,7 +187,7 @@ public class CobolFlowNodeFactory {
         return
                 executionContext.getClass() == CobolParser.DialectSectionContext.class ||
                 executionContext.getClass() == IdmsParser.IdmsIfStatementContext.class ||
-                executionContext.getClass() == IdmsContainerNode.class ||
+                executionContext.getClass() == DialectContainerNode.class ||
                 executionContext.getClass() == IdmsParser.InquireMapIfStatementContext.class
                 ;
     }

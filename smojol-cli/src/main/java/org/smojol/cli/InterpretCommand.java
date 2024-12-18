@@ -4,9 +4,9 @@ import org.apache.commons.lang3.tuple.Pair;
 import org.smojol.common.dialect.LanguageDialect;
 import org.smojol.common.logging.LoggingConfig;
 import org.smojol.common.resource.LocalFilesystemOperations;
-import org.smojol.toolkit.analysis.defined.InterpretTask;
 import org.smojol.toolkit.analysis.pipeline.ProgramSearch;
 import org.smojol.toolkit.analysis.pipeline.config.SourceConfig;
+import org.smojol.toolkit.analysis.task.interpret.InterpretTask;
 import org.smojol.toolkit.interpreter.interpreter.CobolConditionResolver;
 import picocli.CommandLine;
 import picocli.CommandLine.Command;
@@ -18,7 +18,7 @@ import java.util.List;
 import java.util.concurrent.Callable;
 import java.util.logging.Logger;
 
-@Command(name = "interpret", mixinStandardHelpOptions = true, version = "graph 0.1",
+@Command(name = "interpret", mixinStandardHelpOptions = true, version = "sourceGraph 0.1",
         description = "Interprets the COBOL source")
 public class InterpretCommand implements Callable<Integer> {
     private static final Logger LOGGER = Logger.getLogger(InterpretCommand.class.getName());

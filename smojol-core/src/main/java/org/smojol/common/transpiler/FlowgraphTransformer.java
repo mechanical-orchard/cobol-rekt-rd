@@ -1,24 +1,28 @@
 package org.smojol.common.transpiler;
 
-import lombok.Getter;
 import org.jgrapht.Graph;
 import org.smojol.common.flowchart.MermaidGraph;
 import org.smojol.common.id.Identifiable;
 
 import java.util.ArrayList;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Set;
 import java.util.function.BiFunction;
+import java.util.function.Function;
 import java.util.logging.Logger;
 
 public class FlowgraphTransformer<V extends Identifiable, E> {
     private static final java.util.logging.Logger LOGGER = Logger.getLogger(FlowgraphTransformer.class.getName());
     private final BiFunction<V, V, E> buildEdge;
     private final Graph<V, E> graph;
-    @Getter private final List<String> evolutions = new ArrayList<>();
+    private final Function<V, Boolean> isRoot;
+    private final List<String> evolutions = new ArrayList<>();
 
-    public FlowgraphTransformer(Graph<V, E> graph, BiFunction<V, V, E> buildEdge) {
+    public FlowgraphTransformer(Graph<V, E> graph, BiFunction<V, V, E> buildEdge, Function<V, Boolean> isRoot) {
         this.buildEdge = buildEdge;
         this.graph = graph;
+        this.isRoot = isRoot;
     }
 
     public void applyT1(V node, List<V> affectedNodes) {
@@ -31,10 +35,14 @@ public class FlowgraphTransformer<V extends Identifiable, E> {
 
     public void applyT2(V node, List<V> affectedNodes) {
         List<V> incomingVertices = incomingVertices(node);
-        if (incomingVertices.stream().distinct().count() != 1) return;
+        if (isRoot.apply(node)) return;
+        Set<V> incomingVertexSet = new HashSet<>(incomingVertices);
+        if (incomingVertexSet.isEmpty())
+            throw new RuntimeException("This cannot happen! " + node.label());
+        if (incomingVertexSet.size() != 1) return;
         merge(incomingVertices.getFirst(), node);
         affectedNodes.add(node);
-//        evolutions.add(new MermaidGraph<V, E>().draw(graph));
+//        evolutions.add(new MermaidGraph<V, E>().draw(sourceGraph));
     }
 
     private List<E> selfLoops(V node, Graph<V, E> graph) {
@@ -64,22 +72,18 @@ public class FlowgraphTransformer<V extends Identifiable, E> {
         graph.addEdge(from, to, buildEdge.apply(from, to));
     }
 
-    public List<String> reduce() {
+    public FlowgraphReductionResult<V, E> reduce() {
         evolutions.add(new MermaidGraph<V, E>().draw(graph));
         List<V> affectedNodes = new ArrayList<>();
         do {
             affectedNodes.clear();
-            List<V> nodes = new ArrayList<>(graph.vertexSet());
-            nodes.forEach(node -> applyT1(node, affectedNodes));
-            nodes.forEach(node -> applyT2(node, affectedNodes));
+            List<V> nodesBeforeT1 = new ArrayList<>(graph.vertexSet());
+            nodesBeforeT1.forEach(node -> applyT1(node, affectedNodes));
+            List<V> nodesBeforeT2 = new ArrayList<>(graph.vertexSet());
+            nodesBeforeT2.forEach(node -> applyT2(node, affectedNodes));
             evolutions.add(new MermaidGraph<V, E>().draw(graph));
         } while (!affectedNodes.isEmpty());
 
-        return evolutions;
-    }
-
-    public boolean isReducible() {
-        reduce();
-        return graph.vertexSet().size() == 1;
+        return new FlowgraphReductionResult<>(graph, evolutions, graph.vertexSet().size() == 1);
     }
 }
